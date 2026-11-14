@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orrery</title>
+<meta name="description" content="Orrery: a private calendar of orbits. Sun dial, galaxy, moon, and daily habits.">
+<meta name="theme-color" content="#07040F">
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Orrery">
+<meta name="application-name" content="Orrery">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="app"><div id="view"></div></main>
+<nav class="tabbar" id="tabs" aria-label="Sections"></nav>
+<div class="topbar" id="topbar"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"><div class="sheet-body" id="sheetBody"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<noscript><p style="padding:24px;color:#fff">Orrery needs JavaScript turned on.</p></noscript>
+<script src="words.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
