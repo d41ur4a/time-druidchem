@@ -1,5 +1,5 @@
 /* Orrery service worker: caches the app shell so it works fully offline. Bump VERSION on each deploy. */
-const VERSION = 'orrery-v4';
+const VERSION = 'orrery-v8';
 const SHELL = ['./', './index.html', './styles.css', './app.js', './words.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });

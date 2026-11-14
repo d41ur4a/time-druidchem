@@ -5,7 +5,7 @@
 // ===================== CONFIG (easy to change) =====================
 // Big rings on the Now face, OUTSIDE → INSIDE (the sun dial is always the centre).
 // Available: 'wheel' (Galaxy), 'moon', 'turn', 'life', 'focus'
-const RING_ORDER = ['wheel', 'moon'];
+const RING_ORDER = ['wheel', 'year', 'moon'];
 // Small habit rings in the face's 4 corners (top-left, top-right, bottom-left, bottom-right).
 // Available: 'focus', 'gym', 'mandarin', 'protein'
 const HABIT_RINGS = ['focus', 'gym', 'mandarin', 'protein', 'water'];
@@ -34,36 +34,36 @@ const NEW_MOON_REF = Date.UTC(2000, 0, 6, 18, 14, 0) / 1000;
 // moon ring, sun dial [morning, afternoon, evening], the 5 habit rings, and 3 soft background glows.
 const PALETTES = {
   aurora: { name: 'Nebula Aurora', bg: '#07040F', surface: 'rgba(28,20,48,0.58)', text: '#F4F1FF', muted: '#A39CC4', accent: '#7B2FF7', accentInk: '#FFFFFF',
-    galaxy: ['#7B2FF7', '#2E8BFF', '#2EF2B0'], moon: ['#2E8BFF', '#00C6FF'], sun: ['#FFD166', '#FF9F6B', '#FF5FD2'],
+    sunRing: ['#B9770E', '#FFC94D'], galaxy: ['#7B2FF7', '#2E8BFF', '#2EF2B0'], moon: ['#2E8BFF', '#00C6FF'], sun: ['#FFD166', '#FF9F6B', '#FF5FD2'],
     habits: { focus: '#2EF2B0', gym: '#FF5FD2', mandarin: '#FFB347', protein: '#B48CFF', water: '#38E8FF' },
     glow: ['rgba(123,47,247,0.20)', 'rgba(0,198,255,0.11)', 'rgba(46,242,176,0.08)'], aurora: true },
   cosmic: { name: 'Cosmic Blue', bg: '#000000', surface: 'rgba(28,28,30,0.62)', text: '#FFFFFF', muted: '#8E8E93', accent: '#0A84FF', accentInk: '#FFFFFF',
-    galaxy: ['#0040DD', '#0A84FF'], moon: ['#0071A4', '#64D2FF'], sun: ['#FFD60A', '#FF9F0A', '#FF6482'],
+    sunRing: ['#B76E00', '#FFCC4D'], galaxy: ['#0040DD', '#0A84FF'], moon: ['#0071A4', '#64D2FF'], sun: ['#FFD60A', '#FF9F0A', '#FF6482'],
     habits: { focus: '#30D158', gym: '#FF6482', mandarin: '#FF9F0A', protein: '#BF5AF2', water: '#5EE0D8' },
     glow: ['rgba(255,159,10,0.075)', 'rgba(94,92,230,0.06)', 'rgba(0,0,0,0)'] },
   druid: { name: 'Druid Green', bg: '#040A07', surface: 'rgba(18,34,25,0.60)', text: '#F1F5EC', muted: '#98A89B', accent: '#2FBF71', accentInk: '#04140B',
-    galaxy: ['#0E6B45', '#2FBF71'], moon: ['#8C7A3A', '#E8C766'], sun: ['#F5D76E', '#D4A017', '#C76B3A'],
+    sunRing: ['#8F6A12', '#F0C75E'], galaxy: ['#0E6B45', '#2FBF71'], moon: ['#8C7A3A', '#E8C766'], sun: ['#F5D76E', '#D4A017', '#C76B3A'],
     habits: { focus: '#3DDC84', gym: '#E07A5F', mandarin: '#E8C766', protein: '#B39DDB', water: '#5ED3C4' },
     glow: ['rgba(232,199,102,0.09)', 'rgba(47,191,113,0.08)', 'rgba(0,0,0,0)'] },
   ember: { name: 'Sunset Ember', bg: '#0C0505', surface: 'rgba(40,20,20,0.60)', text: '#FFF3EE', muted: '#B39A94', accent: '#FF6A3D', accentInk: '#1A0602',
-    galaxy: ['#C2185B', '#FF4F7B'], moon: ['#E0661F', '#FFC07A'], sun: ['#FFD36E', '#FF8A3D', '#E8457A'],
+    sunRing: ['#B8400B', '#FFB13D'], galaxy: ['#C2185B', '#FF4F7B'], moon: ['#E0661F', '#FFC07A'], sun: ['#FFD36E', '#FF8A3D', '#E8457A'],
     habits: { focus: '#FFB13D', gym: '#FF4F7B', mandarin: '#FFD36E', protein: '#D46BFF', water: '#5ED3E0' },
     glow: ['rgba(255,106,61,0.13)', 'rgba(232,69,122,0.08)', 'rgba(0,0,0,0)'] },
   violet: { name: 'Nebula Violet', bg: '#08050F', surface: 'rgba(30,22,46,0.60)', text: '#F6F2FF', muted: '#A49BBE', accent: '#9D6BFF', accentInk: '#12052A',
-    galaxy: ['#5B2DCC', '#9D6BFF'], moon: ['#B03FCB', '#F08BFF'], sun: ['#FFD27A', '#FF9DCB', '#B57BFF'],
+    sunRing: ['#A86A16', '#FFD27A'], galaxy: ['#5B2DCC', '#9D6BFF'], moon: ['#B03FCB', '#F08BFF'], sun: ['#FFD27A', '#FF9DCB', '#B57BFF'],
     habits: { focus: '#7DF0C5', gym: '#FF7AB6', mandarin: '#FFC27A', protein: '#C7A2FF', water: '#7AD7FF' },
     glow: ['rgba(157,107,255,0.14)', 'rgba(240,139,255,0.07)', 'rgba(0,0,0,0)'] },
   mono: { name: 'Monochrome', bg: '#000000', surface: 'rgba(28,28,30,0.66)', text: '#FFFFFF', muted: '#98989D', accent: '#E5E5EA', accentInk: '#000000',
-    galaxy: ['#8E8E93', '#F2F2F7'], moon: ['#636366', '#C7C7CC'], sun: ['#FFFFFF', '#AEAEB2', '#7C7C80'],
+    sunRing: ['#5A5A5E', '#D1D1D6'], galaxy: ['#8E8E93', '#F2F2F7'], moon: ['#636366', '#C7C7CC'], sun: ['#FFFFFF', '#AEAEB2', '#7C7C80'],
     habits: { focus: '#F2F2F7', gym: '#D1D1D6', mandarin: '#AEAEB2', protein: '#C7C7CC', water: '#E5E5EA' },
     glow: ['rgba(255,255,255,0.04)', 'rgba(0,0,0,0)', 'rgba(0,0,0,0)'] },
   ocean: { name: 'Ocean Teal', bg: '#02090C', surface: 'rgba(14,32,38,0.60)', text: '#EEFAFB', muted: '#8FA9AE', accent: '#14B8C4', accentInk: '#01161A',
-    galaxy: ['#0B5F7A', '#14B8C4'], moon: ['#2E6BFF', '#7FB2FF'], sun: ['#FFE29A', '#7FE3D0', '#3FA7FF'],
+    sunRing: ['#A47A0A', '#FFE29A'], galaxy: ['#0B5F7A', '#14B8C4'], moon: ['#2E6BFF', '#7FB2FF'], sun: ['#FFE29A', '#7FE3D0', '#3FA7FF'],
     habits: { focus: '#4ADE80', gym: '#FF7A90', mandarin: '#FFC857', protein: '#A78BFA', water: '#22D3EE' },
     glow: ['rgba(20,184,196,0.12)', 'rgba(46,107,255,0.07)', 'rgba(0,0,0,0)'] },
 };
 const DEFAULT_PALETTE = 'aurora';
-const CUSTOM_KEYS = [['accent', 'Accent'], ['galaxy', 'Galaxy ring'], ['moon', 'Moon ring'], ['sun', 'Sun dial'], ['focus', 'Satisfying'], ['gym', 'Gym'], ['mandarin', '中文'], ['protein', 'Protein'], ['water', 'Water']];
+const CUSTOM_KEYS = [['accent', 'Accent'], ['galaxy', 'Galaxy ring'], ['sunRing', 'Sun ring'], ['moon', 'Moon ring'], ['sun', 'Sun dial'], ['focus', 'Satisfying'], ['gym', 'Gym'], ['mandarin', '中文'], ['protein', 'Protein'], ['water', 'Water']];
 const COL = { water: '#5EE0D8', bg: '#000000', sunB: '#FF9F0A', sunC: '#FF6482',  green: '#30D158', cyan: '#64D2FF', yellow: '#FFD60A', purple: '#BF5AF2', blue: '#0A84FF', orange: '#FF9F0A', pink: '#FF6482', red: '#FF375F', indigo: '#5E5CE6' };
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const RULES = [
@@ -132,7 +132,7 @@ function moonGlyph(cx, cy, r, p, lit = '#F2F2F7', dark = '#1C1C1E', edge = '#000
 
 // ===================== STORE =====================
 const KEY = 'druid-time-v1';
-const blankDay = () => ({ focus: 0, made: false, connected: false, learned: false, journal: '', wake: null, gym: false, gymMin: 0, gymNote: '', mandarin: 0, protein: 0, meals: [], sugar: null, brushed: false, morning: {}, water: 0 });
+const blankDay = () => ({ focus: 0, made: false, connected: false, learned: false, journal: '', wake: null, gym: false, gymMin: 0, gymNote: '', mandarin: 0, protein: 0, meals: [], sugar: null, brushed: false, morning: {}, water: 0, chores: {} });
 // Day Shape: a gentle default rhythm. Each block hangs off an anchor (ur wake time, sunset, or bedtime) by an offset in minutes.
 const DEFAULT_SHAPE = [
   { id: 'b1', kind: 'wake', name: 'Wake & light', anchor: 'wake', off: 0, len: 45 },
@@ -145,6 +145,15 @@ const DEFAULT_SHAPE = [
   { id: 'b8', kind: 'review', name: 'Sunset review', anchor: 'sunset', off: 30, len: 20 },
   { id: 'b9', kind: 'sleep', name: 'Teeth & sleep', anchor: 'bed', off: -30, len: 30 },
 ];
+// Chores on the sun dial. time = minutes after midnight. repeat: daily | weekdays (days: 0=Sun..6) | every (n days from start) | weekly (wd)
+const DEFAULT_CHORES = [
+  { id: 'c-water', icon: '💧', name: 'Refill water bottle', time: 630, repeat: 'daily' },
+  { id: 'c-gym', icon: '🏋️', name: 'Gym', time: 960, repeat: 'weekdays', days: [1, 2, 3, 4, 5, 6] },
+  { id: 'c-laundry', icon: '🧺', name: 'Laundry', time: 660, repeat: 'every', n: 3, start: '' },
+  { id: 'c-tidy', icon: '🧹', name: 'Tidy room', time: 1260, repeat: 'daily' },
+];
+const CHORE_ICONS = ['💧', '🏋️', '🧺', '🧹', '🦷', '🍳', '🛒', '🧴', '💊', '🪴', '🐕', '📚', '🧘', '🚿', '🗑️', '📞', '💻', '🧾', '🍽️', '🛏️', '🚶', '☀️', '🌙', '✉️', '🧪', '🎸', '🧽', '🚗', '✨'];
+const WD_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DEFAULT_MORNING = ['Water', 'Sunlight', 'Brush teeth', 'Protein breakfast', 'Open Orrery'];
 const DEFAULT_PEOPLE = [
   { id: 'p-mom', name: 'Mom', every: 7, last: '', bday: '' },
@@ -152,7 +161,7 @@ const DEFAULT_PEOPLE = [
   { id: 'p-gf', name: 'Girlfriend', every: 3, last: '', bday: '' },
   { id: 'p-friend', name: 'Friend', every: 30, last: '', bday: '' },
 ];
-const emptyStore = () => ({ v: 2, name: 'Lav', birth: '', lifeYears: 80, goalMin: 180, proteinGoal: 120, mandarinGoal: 30, gymGoal: 45, waterGoal: 2500, palette: DEFAULT_PALETTE, custom: {}, reminders: { sunrise: false, review: false, habits: false, teeth: false, birthdays: false }, notified: {}, days: {}, intentions: {}, goals: [], firsts: [], people: DEFAULT_PEOPLE.map((p) => ({ ...p })), shape: DEFAULT_SHAPE.map((b) => ({ ...b })), morningList: [...DEFAULT_MORNING], timer: null, place: { ...DEFAULT_PLACE } });
+const emptyStore = () => ({ v: 2, name: 'Lav', birth: '', lifeYears: 80, goalMin: 180, proteinGoal: 120, mandarinGoal: 30, gymGoal: 45, waterGoal: 2500, palette: DEFAULT_PALETTE, custom: {}, quiet: true, reminders: { sunrise: false, review: false, habits: false, teeth: false, birthdays: false }, notified: {}, days: {}, intentions: {}, goals: [], firsts: [], people: DEFAULT_PEOPLE.map((p) => ({ ...p })), shape: DEFAULT_SHAPE.map((b) => ({ ...b })), morningList: [...DEFAULT_MORNING], chores: DEFAULT_CHORES.map((c) => ({ ...c, days: c.days ? [...c.days] : undefined, ...(c.repeat === 'every' ? { start: new Date().toISOString().slice(0, 10) } : {}) })), orbit: false, dreams: [], timer: null, place: { ...DEFAULT_PLACE } });
 function sanitize(o) {
   if (!o || typeof o !== 'object') return null;
   const b = emptyStore();
@@ -166,6 +175,11 @@ function sanitize(o) {
   if ((o.v || 1) < 2 && !s.people.length) s.people = b.people;
   s.shape = Array.isArray(o.shape) ? o.shape.filter((x) => x && x.id) : b.shape;
   s.morningList = Array.isArray(o.morningList) ? o.morningList.map(String) : b.morningList;
+  s.chores = Array.isArray(o.chores) ? o.chores.filter((c) => c && c.id).map((c) => ({ icon: '✨', name: 'Chore', time: 720, repeat: 'daily', ...c, time: clamp(Math.round(+c.time || 0), 0, 1439) })) : b.chores;
+  s.orbit = !!o.orbit;
+  s.quiet = o.quiet === undefined ? true : !!o.quiet;
+  s.dreams = Array.isArray(o.dreams) ? o.dreams.filter((d) => d && d.id && (String(d.text || '').trim() || String(d.title || '').trim())).map((d) => ({ id: String(d.id), date: String(d.date || ''), title: String(d.title || ''), text: String(d.text || ''), vivid: clamp(parseInt(d.vivid, 10) || 3, 1, 5), tags: Array.isArray(d.tags) ? d.tags.map(String) : [], lucid: !!d.lucid, at: +d.at || 0 })) : [];
+  s.chores.forEach((c) => { if (c.repeat === 'every' && !/^\d{4}-\d{2}-\d{2}$/.test(c.start || '')) c.start = new Date().toISOString().slice(0, 10); });
   s.name = typeof o.name === 'string' ? o.name : b.name;
   s.palette = PALETTES[o.palette] || o.palette === 'custom' ? o.palette : DEFAULT_PALETTE;
   s.custom = o.custom && typeof o.custom === 'object' ? Object.fromEntries(Object.entries(o.custom).filter(([, v]) => /^#[0-9a-fA-F]{6}$/.test(v))) : {};
@@ -235,6 +249,8 @@ function compute(now) {
   S.turnStartMs = (J2000_S + (S.tn - BASE.T) * YS) * 1000;
   S.turnStartKey = dkey(S.turnStartMs); S.nextTurnday = dkey(S.turnStartMs + YS * 1000);
   S.isTurnday = S.today === S.turnStartKey;
+  { const y = local.getUTCFullYear(), y0 = Date.UTC(y, 0, 1), y1 = Date.UTC(y + 1, 0, 1), lm = local.getTime();
+    S.yearDays = Math.round((y1 - y0) / 86400000); S.yearDay = Math.floor((lm - y0) / 86400000) + 1; S.yearF = (lm - y0) / (y1 - y0); }
 
   const bOk = /^\d{4}-\d{2}-\d{2}$/.test(store.birth) && !isNaN(Date.parse(store.birth + 'T00:00:00Z'));
   S.birthOk = bOk;
@@ -301,17 +317,20 @@ function resolvePalette(id, custom) {
   const base = PALETTES[DEFAULT_PALETTE], c = custom || {};
   const accent = c.accent || base.accent;
   return { ...base, name: 'Custom', aurora: false, accent, accentInk: lum(accent) > 0.4 ? '#000000' : '#FFFFFF',
-    galaxy: c.galaxy ? [shade(c.galaxy, 0.55), c.galaxy] : base.galaxy.slice(0, 2), moon: c.moon ? [shade(c.moon, 0.6), c.moon] : base.moon,
+    galaxy: c.galaxy ? [shade(c.galaxy, 0.55), c.galaxy] : base.galaxy.slice(0, 2), sunRing: c.sunRing ? [shade(c.sunRing, 0.6), c.sunRing] : base.sunRing, moon: c.moon ? [shade(c.moon, 0.6), c.moon] : base.moon,
     sun: c.sun ? [c.sun, shade(c.sun, 0.8), shade(c.sun, 0.6)] : base.sun,
     habits: Object.fromEntries(Object.entries(base.habits).map(([k, v]) => [k, c[k] || v])) };
 }
 let PAL = PALETTES[DEFAULT_PALETTE];
+let choreVer = 0; // bumps whenever chores or their ticks change, so the dial redraws
 function applyPalette() {
+  document.body.classList.toggle('quiet', !!store.quiet);
   const P = resolvePalette(store.palette, store.custom); PAL = P;
   Object.assign(COL, { bg: P.bg, blue: P.accent, green: P.habits.focus, pink: P.habits.gym, orange: P.habits.mandarin, purple: P.habits.protein, water: P.habits.water,
     cyan: P.moon[1], yellow: P.sun[0], sunB: P.sun[1], sunC: P.sun[2], red: P.galaxy[1] });
   RINGS.wheel.a = P.galaxy[0]; RINGS.wheel.b = P.galaxy[1]; RINGS.wheel.c = P.galaxy[2] || null;
   RINGS.moon.a = P.moon[0]; RINGS.moon.b = P.moon[1];
+  RINGS.year.a = P.sunRing[0]; RINGS.year.b = P.sunRing[1];
   RINGS.focus.a = shade(P.habits.focus, 0.6); RINGS.focus.b = P.habits.focus;
   RINGS.turn.a = P.sun[1]; RINGS.turn.b = P.sun[0];
   RINGS.life.a = shade(P.habits.protein, 0.6); RINGS.life.b = P.habits.protein;
@@ -333,8 +352,8 @@ function swatchSVG(P) {
   const stops = (P.galaxy[2] ? [P.galaxy[0], P.galaxy[1], P.galaxy[2]] : [P.galaxy[0], P.galaxy[1]]).map((c, i, a) => `<stop offset="${(i / (a.length - 1)) * 100}%" stop-color="${c}"/>`).join('');
   const C1 = 2 * Math.PI * 33;
   return `<svg viewBox="0 0 80 96" aria-hidden="true"><defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1">${stops}</linearGradient></defs><rect width="80" height="96" rx="14" fill="${P.bg}"/>
-    <circle cx="40" cy="40" r="33" fill="none" stroke="${P.galaxy[1]}" stroke-opacity=".18" stroke-width="7"/><circle cx="40" cy="40" r="33" fill="none" stroke="url(#${gid})" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(0.78 * C1).toFixed(1)} ${C1.toFixed(1)}" transform="rotate(-90 40 40)"/>
-    ${arc(24, 0.45, P.moon[1], 7)}<path d="M 23 40 A 17 17 0 0 1 57 40" fill="none" stroke="${P.sun[0]}" stroke-width="4" stroke-linecap="round"/><path d="M 57 40 A 17 17 0 0 1 51 53" fill="none" stroke="${P.sun[2]}" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="40" cy="40" r="33" fill="none" stroke="${P.galaxy[1]}" stroke-opacity=".18" stroke-width="6"/><circle cx="40" cy="40" r="33" fill="none" stroke="url(#${gid})" stroke-width="6" stroke-linecap="round" stroke-dasharray="${(0.78 * C1).toFixed(1)} ${C1.toFixed(1)}" transform="rotate(-90 40 40)"/>
+    ${arc(25.5, 0.87, P.sunRing[1], 6)}${arc(18, 0.45, P.moon[1], 6)}<path d="M 29 40 A 11 11 0 0 1 51 40" fill="none" stroke="${P.sun[0]}" stroke-width="3.5" stroke-linecap="round"/><path d="M 51 40 A 11 11 0 0 1 47.8 47.8" fill="none" stroke="${P.sun[2]}" stroke-width="3.5" stroke-linecap="round"/>
     ${Object.values(P.habits).map((c, i) => `<circle cx="${14 + i * 13}" cy="85" r="4.2" fill="${c}"/>`).join('')}</svg>`;
 }
 
@@ -394,11 +413,119 @@ function computeBirthdays(S, now) {
 }
 const bdayLine = (b) => (b.days === 0 ? `Today is ${b.p.name}'s birthday. A call beats a text.` : `${b.p.name}'s birthday is in ${b.days} day${b.days > 1 ? 's' : ''}. A little planning goes a long way.`);
 
+// ===================== CHORES =====================
+const addDays = (k, n) => dkey(kms(k) + n * 86400000 + 43200000);
+const wdOf = (k) => new Date(k + 'T12:00:00Z').getUTCDay();
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const choreStart = (c) => (/^\d{4}-\d{2}-\d{2}$/.test(c.start || '') ? c.start : c.created || dkey(Date.now()));
+function dueOn(c, k) {
+  if (c.repeat === 'weekdays') return (c.days || []).includes(wdOf(k));
+  if (c.repeat === 'weekly') return wdOf(k) === (+c.wd || 0);
+  if (c.repeat === 'every') { const d = Math.round((kms(k) - kms(choreStart(c))) / 86400000), n = Math.max(2, +c.n || 2); return d >= 0 && d % n === 0; }
+  return true;
+}
+const choreDone = (c, k) => !!(store.days[k] && store.days[k].chores && store.days[k].chores[c.id]);
+function choreStreak(c, S) {
+  let n = 0, k = S.today;
+  if (dueOn(c, k) && !choreDone(c, k)) k = addDays(k, -1);
+  for (let i = 0; i < 400; i++, k = addDays(k, -1)) { if (!dueOn(c, k)) continue; if (choreDone(c, k)) n++; else break; }
+  return n;
+}
+function choreNext(c, S) {
+  for (let d = 0; d < 400; d++) {
+    const k = addDays(S.today, d); if (!dueOn(c, k) || (d === 0 && choreDone(c, k))) continue;
+    return { k, d, label: (d === 0 ? 'today' : d === 1 ? 'tomorrow' : `${WD_SHORT[wdOf(k)]} ${+k.slice(8)} ${MON[+k.slice(5, 7) - 1]}`) + ' ' + hm(c.time) };
+  }
+  return null;
+}
+const repeatText = (c) => (c.repeat === 'weekdays' ? ((c.days || []).length === 7 ? 'Every day' : (c.days || []).map((d) => WD_SHORT[d]).join(' ') || 'No days picked')
+  : c.repeat === 'weekly' ? `Weekly on ${WD_SHORT[+c.wd || 0]}` : c.repeat === 'every' ? `Every ${Math.max(2, +c.n || 2)} days` : 'Daily');
+// every chore occurrence (plus the built-in teeth) from yesterday to the day after tomorrow
+function choreOcc(S, maxD = 2) {
+  const out = [];
+  for (let d = -1; d <= maxD; d++) {
+    const k = addDays(S.today, d), base = kms(k);
+    store.chores.forEach((c) => { if (dueOn(c, k)) out.push({ c, k, id: c.id, icon: c.icon, name: c.name, t: base + c.time * 60000, done: choreDone(c, k), act: `chore:${c.id}:${k}` }); });
+    out.push({ c: null, k, id: 'teeth', icon: '🦷', name: 'Brush teeth', t: base + wrap(S.bed - 30) * 60000, done: !!(store.days[k] && store.days[k].brushed), act: `brushOn:${k}` });
+  }
+  out.forEach((o) => { o.dt = (o.t - S.now) / 60000; o.overdue = !o.done && o.dt < -30 && o.dt > -720; });
+  return out;
+}
+function choreIcon(o, r, extra = '') {
+  return `<g class="chore tap${o.done ? ' done' : ''}${o.overdue ? ' overdue' : ''}" data-act="${o.act}" ${extra}>${o.overdue ? `<circle class="halo" r="${r + 5}" fill="none" stroke="${COL.sunC}" stroke-width="3"/>` : ''}<circle r="${r}" fill="${COL.bg}" stroke="${o.done ? COL.green : 'rgba(255,255,255,.35)'}" stroke-width="1.6"/><text class="emo" y="${(r * 0.36).toFixed(1)}" text-anchor="middle" font-size="${(r * 1.05).toFixed(1)}">${o.icon}</text>${o.done ? `<circle cx="${(r * 0.72).toFixed(1)}" cy="${(-r * 0.72).toFixed(1)}" r="${(r * 0.42).toFixed(1)}" fill="${COL.green}"/><path d="M${(r * 0.52).toFixed(1)} ${(-r * 0.72).toFixed(1)} l${(r * 0.16).toFixed(1)} ${(r * 0.17).toFixed(1)} l${(r * 0.28).toFixed(1)} ${(-r * 0.32).toFixed(1)}" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>` : ''}</g>`;
+}
+function flatChoresSVG(S, D) {
+  const today = choreOcc(S).filter((o) => o.k === S.today && o.id !== 'teeth').sort((a, b) => a.t - b.t);
+  let last = -1e9, lane = 0;
+  return today.map((o) => {
+    const m = wrap(Math.round((o.t - kms(S.today)) / 60000));
+    lane = m - last < 40 ? (lane + 1) % 2 : 0; last = m;
+    const [x, y] = pt(D - (lane ? 30 : 0), dialF(m));
+    return choreIcon(o, 12, `transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"`);
+  }).join('');
+}
+// ---- time helix: today's loop tilted in perspective with NOW at the front, climbing one turn per 24 h ----
+const HX = { cx: 300, cy: 388, rx: 118, ry: 36, pitch: 62, ahead: 66 * 60, past: 4 * 60, seg: 15 };
+let helixPhi = 0; // drag rotation, degrees
+const mixHex = (a, b, t) => { const A = hexRgb(a), B = hexRgb(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+function strandCol(f) { // palette gradient along the helix, 0 = now → 1 = top
+  const g = RINGS.wheel.c ? [RINGS.wheel.a, RINGS.wheel.b, RINGS.wheel.c] : [RINGS.wheel.a, RINGS.wheel.b];
+  const x = clamp(f, 0, 1) * (g.length - 1), i = Math.min(g.length - 2, Math.floor(x));
+  return mixHex(g[i], g[i + 1], x - i);
+}
+function helixSVG(S, D, phi = 0) {
+  const { cx, cy, rx, ry, pitch } = HX, items = [];
+  const P = (dt, off = 0) => { const a = ((dt / 1440) * 360 + phi + off) * Math.PI / 180; return [cx + rx * Math.sin(a), cy + ry * Math.cos(a) - (dt / 1440) * pitch, Math.cos(a)]; };
+  const dayAt = (dt) => { const m = wrap(S.nowMin + dt); return S.sun.polar === 'day' || (S.sun.polar === null && m >= S.rise && m < S.set); };
+  const depth = (dt, z) => { const k = (1 + z) / 2, far = Math.max(0, dt) / HX.ahead; return { k, fade: dt < 0 ? 0.35 + 0.65 * (1 + dt / HX.past) * 0.5 : 1 - 0.55 * far }; };
+  // strand A: time itself (palette gradient, warmed in daylight). strand B: a faint mirrored strand.
+  for (let dt = -HX.past; dt < HX.ahead; dt += HX.seg) {
+    const [x0, y0, z0] = P(dt), [x1, y1, z1] = P(dt + HX.seg), z = (z0 + z1) / 2, { k, fade } = depth(dt, z);
+    const base = strandCol((dt + HX.seg / 2) / HX.ahead), col = dayAt(dt + HX.seg / 2) ? mixHex(base, COL.yellow, 0.55) : base;
+    items.push({ z, svg: `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${col}" stroke-width="${((2.5 + 7 * k) * (0.6 + 0.4 * fade)).toFixed(1)}" stroke-linecap="round" opacity="${((0.25 + 0.75 * k) * fade).toFixed(2)}"/>` });
+    if ((dt / HX.seg) % 2 === 0) {
+      const [u0, v0, w0] = P(dt, 180), [u1, v1, w1] = P(dt + HX.seg * 2, 180), wz = (w0 + w1) / 2, kk = (1 + wz) / 2;
+      items.push({ z: wz, svg: `<line x1="${u0.toFixed(1)}" y1="${v0.toFixed(1)}" x2="${u1.toFixed(1)}" y2="${v1.toFixed(1)}" stroke="${RINGS.moon.b}" stroke-width="${(1 + 2.5 * kk).toFixed(1)}" stroke-linecap="round" opacity="${((0.1 + 0.3 * kk) * fade).toFixed(2)}"/>` });
+    }
+  }
+  // rungs at sunrise and sunset, linking the two strands
+  if (S.sun.polar === null) {
+    for (let d = -1; d <= 3; d++) [[S.rise, COL.sunB], [S.set, COL.sunC]].forEach(([m, col]) => {
+      const dt = m - S.nowMin + d * 1440; if (dt < -HX.past || dt > HX.ahead) return;
+      const [x0, y0, z0] = P(dt), [x1, y1, z1] = P(dt, 180), { fade } = depth(dt, 0);
+      items.push({ z: Math.min(z0, z1) + 0.01, svg: `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${col}" stroke-width="1.2" opacity="${(0.28 * fade).toFixed(2)}" stroke-dasharray="2 4"/>` });
+      items.push({ z: z0 + 0.003, svg: `<circle cx="${x0.toFixed(1)}" cy="${y0.toFixed(1)}" r="${(1.8 + 2.4 * (1 + z0) / 2).toFixed(1)}" fill="${col}" opacity="${(0.7 * fade).toFixed(2)}"/>` });
+    });
+  }
+  // day labels on each turn, beside the turn at that day's noon height
+  for (let d = 0; d <= 3; d++) {
+    const dtNoon = (kms(addDays(S.today, d)) - S.now) / 60000 + 720; if (dtNoon > HX.ahead + 360) continue;
+    const y = cy - (Math.max(dtNoon, 0) / 1440) * pitch, k = addDays(S.today, d);
+    items.push({ z: -5, svg: `<text class="ql" x="${cx - rx - 12}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="${d === 0 ? 12 : 11}" font-weight="${d === 0 ? 700 : 600}" fill="${d === 0 ? COL.yellow : '#B9B3D6'}" opacity="${(1 - 0.17 * d).toFixed(2)}">${d === 0 ? 'Today' : WD_SHORT[wdOf(k)]}</text>` });
+  }
+  // chores + teeth on every turn; the same time of day lines up as a column
+  const occ = choreOcc(S, 3).filter((o) => o.dt >= -HX.past && o.dt <= HX.ahead);
+  const soon = occ.filter((o) => o.dt >= 0 && !o.done).sort((a, b) => a.dt - b.dt).slice(0, 2).map((o) => o.id + o.k);
+  const inTxt = (m) => (m < 60 ? Math.round(m) + 'm' : Math.floor(m / 60) + 'h' + (Math.round(m % 60) ? ' ' + Math.round(m % 60) + 'm' : ''));
+  occ.forEach((o) => {
+    const [x, y, z] = P(o.dt), { k, fade } = depth(o.dt, z), past = o.dt < 0;
+    const sc = (0.5 + 0.7 * k) * (0.55 + 0.45 * fade), op = past ? (o.overdue ? 0.6 + 0.3 * k : 0.15 + 0.25 * k) : (0.3 + 0.7 * k) * (0.35 + 0.65 * fade);
+    const side = x > cx ? 1 : -1;
+    const lab = soon.includes(o.id + o.k) ? `<g class="ql"><text x="${side * 22}" y="-2" text-anchor="${side > 0 ? 'start' : 'end'}" font-size="12" font-weight="600" fill="#fff">${esc(o.name)}</text><text x="${side * 22}" y="12" text-anchor="${side > 0 ? 'start' : 'end'}" font-size="11" fill="#B9B3D6">in ${inTxt(o.dt)}</text></g>` : '';
+    items.push({ z: z + 0.004, svg: `<g transform="translate(${x.toFixed(1)} ${(y - 1).toFixed(1)}) scale(${sc.toFixed(3)})" opacity="${op.toFixed(2)}">${choreIcon(o, 14)}${lab}</g>` });
+  });
+  const [nx, ny, nz] = P(0);
+  items.push({ z: nz + 0.5, svg: `<g class="tap" data-ring="sun"><circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="20" fill="${COL.yellow}" opacity=".35" filter="url(#now-glow)" class="breathe"/><circle cx="${nx.toFixed(1)}" cy="${ny.toFixed(1)}" r="9.5" fill="${shade(COL.yellow, 1.2)}" stroke="${COL.bg}" stroke-width="2"/><text class="ql" x="${nx.toFixed(1)}" y="${(ny + 30).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" letter-spacing=".1em" fill="${COL.yellow}">NOW</text></g>` });
+  items.push({ z: -9, svg: `<text class="ql" x="${cx}" y="${(cy - ry - 3 * pitch - 18).toFixed(1)}" text-anchor="middle" font-size="9.5" letter-spacing=".12em" fill="#8e8e93" opacity=".75">↑ LATER · ONE TURN = ONE DAY${phi ? '' : ' · DRAG TO TURN'}</text>` });
+  return items.sort((a, b) => a.z - b.z).map((i) => i.svg).join('');
+}
+
 // ===================== RING FACE (shared by Now and Cosmos) =====================
 const RINGS = {
   wheel: { name: 'GALAXY', a: '#0040DD', b: COL.blue, f: (S) => S.wf },
   breath: { name: 'BREATH', a: '#248A3D', b: COL.green, f: (S) => S.bf },
   life: { name: 'LIFE', a: '#8944AB', b: COL.purple, f: (S) => S.lifeF },
+  year: { name: 'SUN', a: '#B9770E', b: '#FFC94D', f: (S) => S.yearF },
   turn: { name: 'TURN', a: COL.orange, b: COL.yellow, f: (S) => S.tf },
   moon: { name: 'MOON', a: '#0071A4', b: COL.cyan, f: (S) => S.moonP },
   focus: { name: 'SATISFYING', a: '#248A3D', b: COL.green, f: (S) => S.focusF },
@@ -440,22 +567,29 @@ function faceSVG(p, order, defs, mode) {
     g += `<circle cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="${R.b}" stroke-opacity="0.17" stroke-width="${L.sw}"/>`;
     if (R.c && PAL.aurora) g += `<circle id="${p}-ra-${id}" class="ring aur" cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="url(#${p}-g-${id})" stroke-width="${L.sw + 6}" stroke-linecap="round" stroke-dasharray="0.01 ${C}" transform="rotate(-90 ${CX} ${CX})" filter="url(#${p}-aur)" opacity="0.55" pointer-events="none"/>`;
     g += `<circle id="${p}-r-${id}" class="ring" cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="url(#${p}-g-${id})" stroke-width="${L.sw}" stroke-linecap="round" stroke-dasharray="0.01 ${C}" transform="rotate(-90 ${CX} ${CX})"/>`;
-    g += `<text id="${p}-t-${id}" x="${CX + 10}" y="${CX - r + 4.5}" font-size="11.5" font-weight="800" letter-spacing="0.08em" fill="${R.b}">${R.name}</text></g>`;
+    g += `<text id="${p}-t-${id}" class="${p === 'now' ? 'ql' : ''}" x="${CX + 10}" y="${CX - r + 4.5}" font-size="11.5" font-weight="800" letter-spacing="0.08em" fill="${R.b}">${R.name}</text></g>`;
   });
   g += `<g id="${p}-dots"></g><g id="${p}-moon"></g>`;
   const D = L.dial;
+  if (mode === 'zones') g += `<g id="${p}-dialg" class="dialg">`;
   g += `<circle class="tap" data-ring="sun" cx="${CX}" cy="${CX}" r="${D + 8}" fill="transparent"/>`;
   g += `<circle cx="${CX}" cy="${CX}" r="${D}" fill="none" stroke="${RINGS.moon.b}" stroke-opacity="0.2" stroke-width="16" pointer-events="none"/>`;
   g += mode === 'zones'
     ? `<path id="${p}-z1" fill="none" stroke="${COL.yellow}" stroke-width="16" stroke-linecap="round"/><path id="${p}-z2" fill="none" stroke="${COL.sunB}" stroke-width="16"/><path id="${p}-z3" fill="none" stroke="${COL.sunC}" stroke-width="16" stroke-linecap="round"/><line id="${p}-stop" stroke="#fff" stroke-width="3" stroke-linecap="round"/>`
     : `<path id="${p}-day" fill="none" stroke="url(#${p}-day)" stroke-width="16" stroke-linecap="round"/><text id="${p}-rise" font-size="11" fill="${COL.sunB}"></text><text id="${p}-set" font-size="11" fill="${COL.sunB}" text-anchor="end"></text>`;
-  [0, 6, 12, 18].forEach((h) => { const [x, y] = pt(D - 24, dialF(h * 60)); g += `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle" font-size="10" fill="#636366">${String(h).padStart(2, '0')}</text>`; });
+  [0, 6, 12, 18].forEach((h) => { const [x, y] = pt(D - 24, dialF(h * 60)); g += `<text class="${p === 'now' ? 'ql' : ''}" x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle" font-size="10" fill="#636366">${String(h).padStart(2, '0')}</text>`; });
   g += `<g id="${p}-sun" class="rot" style="transform-origin:${CX}px ${CX}px"><circle class="breathe" cx="${CX}" cy="${CX - D}" r="13" opacity="0.35" filter="url(#${p}-glow)"/><circle cx="${CX}" cy="${CX - D}" r="7.5" stroke="${COL.bg}" stroke-width="2"/></g>`;
+  if (mode === 'zones') g += `<g id="${p}-tooth" class="tap tooth" data-act="brush" role="button" aria-label="Brush teeth before sleep"><circle r="15" fill="${COL.bg}" stroke="#8E8EF5" stroke-width="2"/><path d="M-6.5 -8.5c-2.6 0-4.3 2-4.3 4.6 0 2 .8 3.4 1.3 5.1.6 2.4.9 7.6 2.8 7.6 1.6 0 1.7-5.1 3.1-5.1h0c1.4 0 1.5 5.1 3.1 5.1 1.9 0 2.2-5.2 2.8-7.6.5-1.7 1.3-3.1 1.3-5.1 0-2.6-1.7-4.6-4.3-4.6-1.3 0-2.1.7-2.9.7s-1.6-.7-2.9-.7z" fill="none" stroke="#C7C7FF" stroke-width="1.6" stroke-linejoin="round" transform="scale(.82)"/></g><g id="${p}-chores"></g>`;
   const big = D > 150 ? 50 : D > 95 ? 40 : 32;
+  if (mode === 'zones') {
+    g += `<g id="${p}-centre" class="centre tap" data-act="peek" role="button" aria-label="Show the time"><circle cx="${CX}" cy="${CX}" r="46" fill="transparent"/><g id="${p}-cglyph"></g></g>`;
+    g += `<g id="${p}-peek" class="peek" pointer-events="none"><rect x="${CX - 92}" y="${CX + 52}" width="184" height="44" rx="14" fill="${COL.bg}" fill-opacity=".86" stroke="rgba(255,255,255,.18)"/><text id="${p}-peekT" x="${CX}" y="${CX + 72}" text-anchor="middle" font-size="15" font-weight="700" fill="#fff" style="font-variant-numeric:tabular-nums"></text><text id="${p}-peekS" x="${CX}" y="${CX + 88}" text-anchor="middle" font-size="10.5" fill="#B9B3D6"></text></g>`;
+  } else {
   g += `<text id="${p}-spin" x="${CX}" y="${CX - big + 2}" text-anchor="middle" font-size="11" font-weight="600" letter-spacing="0.1em" fill="#8e8e93"></text>`;
   g += `<text id="${p}-time" x="${CX}" y="${CX + big / 4}" text-anchor="middle" font-size="${big}" font-weight="700" letter-spacing="-0.03em" fill="#fff" style="font-variant-numeric:tabular-nums"></text>`;
   g += `<text id="${p}-sub" x="${CX}" y="${CX + big / 4 + 24}" text-anchor="middle" font-size="12.5" fill="#8e8e93"></text>`;
-  if (mode === 'zones') g += `<g id="${p}-tooth" class="tap tooth" data-act="brush" role="button" aria-label="Brush teeth before sleep"><circle r="15" fill="${COL.bg}" stroke="#8E8EF5" stroke-width="2"/><path d="M-6.5 -8.5c-2.6 0-4.3 2-4.3 4.6 0 2 .8 3.4 1.3 5.1.6 2.4.9 7.6 2.8 7.6 1.6 0 1.7-5.1 3.1-5.1h0c1.4 0 1.5 5.1 3.1 5.1 1.9 0 2.2-5.2 2.8-7.6.5-1.7 1.3-3.1 1.3-5.1 0-2.6-1.7-4.6-4.3-4.6-1.3 0-2.1.7-2.9.7s-1.6-.7-2.9-.7z" fill="none" stroke="#C7C7FF" stroke-width="1.6" stroke-linejoin="round" transform="scale(.82)"/></g>`;
+  }
+  if (mode === 'zones') g += `</g><g id="${p}-orbit" class="orbitg"></g>`;
   if (mode === 'zones') g += miniSVG(p);
   return `<svg viewBox="0 0 600 ${mode === 'zones' ? FACE_H : 600}" role="img" aria-label="Ring clock">${g}</svg>`;
 }
@@ -479,8 +613,8 @@ function miniSVG(p) {
     g += `<g class="tap" data-ring="${id}"><circle cx="${x}" cy="${y}" r="${MINI_R + 10}" fill="transparent"/>`;
     g += `<circle cx="${x}" cy="${y}" r="${MINI_R}" fill="none" stroke="${H.col}" stroke-opacity="0.2" stroke-width="${MINI_SW}"/>`;
     g += `<circle id="${p}-h-${id}" class="ring" cx="${x}" cy="${y}" r="${MINI_R}" fill="none" stroke="${H.col}" stroke-width="${MINI_SW}" stroke-linecap="round" stroke-dasharray="0.01 ${C}" transform="rotate(-90 ${x} ${y})"/>`;
-    g += `<text id="${p}-hv-${id}" x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" style="font-variant-numeric:tabular-nums"></text>`;
-    g += `<text x="${x}" y="${ly}" text-anchor="middle" font-size="11" font-weight="600" fill="${H.col}" letter-spacing="0.04em">${H.name}</text></g>`;
+    g += `<text id="${p}-hv-${id}" class="ql" x="${x}" y="${y + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" style="font-variant-numeric:tabular-nums"></text>`;
+    g += `<text class="ql" x="${x}" y="${ly}" text-anchor="middle" font-size="11" font-weight="600" fill="${H.col}" letter-spacing="0.04em">${H.name}</text></g>`;
   });
   return g;
 }
@@ -495,7 +629,7 @@ function updateMinis(p, S) {
 function setA(id, attr, val) { const el = document.getElementById(id); if (el && el.getAttribute(attr) !== String(val)) el.setAttribute(attr, val); }
 function setT(id, val) { const el = document.getElementById(id); if (el && el.textContent !== val) el.textContent = val; }
 function updateFace(p, order, defs, mode, S) {
-  if (!document.getElementById(p + '-time')) return;
+  if (!document.getElementById(p + '-dialg') && !document.getElementById(p + '-time')) return;
   const L = ringLayout(order);
   order.forEach((id, i) => {
     const r = L.radii[i], C = 2 * Math.PI * r, f = defs[id].f(S);
@@ -503,6 +637,7 @@ function updateFace(p, order, defs, mode, S) {
     setA(`${p}-r-${id}`, 'opacity', f > 0 ? 1 : 0);
     setA(`${p}-ra-${id}`, 'stroke-dasharray', `${Math.max(0.01, f * C).toFixed(2)} ${C.toFixed(2)}`);
     setA(`${p}-t-${id}`, 'fill', f > 0.09 ? '#000' : defs[id].b);
+    if (id === 'year') setT(`${p}-t-${id}`, `SUN · DAY ${S.yearDay}/${S.yearDays}`);
     const w = document.getElementById(`${p}-wrap-${id}`);
     if (w) w.style.opacity = id === 'focus' && !S.isDay ? 0.28 : 1;
   });
@@ -548,7 +683,22 @@ function updateFace(p, order, defs, mode, S) {
   setT(p + '-time', `${S.hhmm}:${S.ss}`);
   setT(p + '-sub', S.sunLine);
   if (mode === 'zones') {
+    const cgk = `${S.isDay ? 'd' : 'n'}|${S.moonP.toFixed(2)}|${PAL.name}`, cgl = document.getElementById(p + '-cglyph');
+    if (cgl && cgl.dataset.k !== cgk) {
+      cgl.dataset.k = cgk;
+      cgl.innerHTML = S.isDay
+        ? `<circle cx="${CX}" cy="${CX}" r="34" fill="${COL.yellow}" opacity=".16" filter="url(#${p}-glow)" class="breathe"/><circle cx="${CX}" cy="${CX}" r="15" fill="${COL.yellow}" opacity=".85"/>` + Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4, c = Math.cos(a), s2 = Math.sin(a); return `<line x1="${(CX + 21 * c).toFixed(1)}" y1="${(CX + 21 * s2).toFixed(1)}" x2="${(CX + 28 * c).toFixed(1)}" y2="${(CX + 28 * s2).toFixed(1)}" stroke="${COL.yellow}" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>`; }).join('')
+        : `<circle cx="${CX}" cy="${CX}" r="32" fill="#C7C7FF" opacity=".08" filter="url(#${p}-glow)" class="breathe"/>` + moonGlyph(CX, CX, 17, S.moonP, '#F2F2F7', '#2C2C3A', COL.bg);
+    }
+    setT(p + '-peekT', `${S.hhmm}:${S.ss}`);
+    setT(p + '-peekS', S.sunLine);
     updateMinis(p, S);
+    const ck = `${Math.floor(S.now / 60000)}|${choreVer}|${PAL.name}`;
+    const cg = document.getElementById(p + '-chores');
+    if (cg && cg.dataset.k !== ck) { cg.innerHTML = flatChoresSVG(S, D); cg.dataset.k = ck; }
+    const og = document.getElementById(p + '-orbit');
+    const hk = ck + '|' + helixPhi.toFixed(1);
+    if (og && store.orbit && og.dataset.k !== hk) { og.innerHTML = helixSVG(S, D, helixPhi); og.dataset.k = hk; }
     const tooth = document.getElementById(p + '-tooth');
     if (tooth) {
       const [tx, ty] = pt(D, dialF(wrap(S.bed - 30)));
@@ -592,42 +742,50 @@ function deepMsgs(S) {
     'Whatever feels huge today is happening on a planet doing 29.78 km/s, around a star doing 230 km/s, around a black hole of about 4 million Suns. Breathe. Then decide.',
   ];
 }
+const ORBIT_ICON = `<svg class="oi oi-helix" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20c0-3 12-3 12-6S6 11 6 8s12-3 12-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 20c0-3-12-3-12-6s12-3 12-6S6 5 6 2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg><svg class="oi oi-flat" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="4" r="2.2" fill="currentColor"/></svg>`;
 function viewNow(S) {
   return `<div class="now-wrap"><div>
     <div class="center hello"><div class="eyebrow" data-t="placeLine"></div><div class="greet" data-t="greet"></div>
       <div class="hero-title nowline" data-t="nowLine"></div><div class="nowtag" data-t="nowTag"></div>
       <button class="next" data-act="tab:today"><span data-t="nextLine"></span></button></div>
-    <div class="face">${faceSVG('now', RING_ORDER, RINGS, 'zones')}</div>
+    <div class="face ${store.orbit ? 'orbit-on' : ''}" id="nowFace">${faceSVG('now', RING_ORDER, RINGS, 'zones')}<button class="orbit-btn" data-act="orbit" aria-pressed="${store.orbit}" aria-label="Helix or flat view" data-tip="orbit">${ORBIT_ICON}<span class="ql" data-t="orbitBtn"></span></button></div>
   </div><div class="now-side">
     <div class="card ctx" data-h="ctx"></div>
     <div data-h="quick"></div>
-    <div class="muted center" style="margin-top:14px;font-size:12.5px">Tap a ring to log it. The Galaxy ring opens Cosmos.</div>
+    <div class="muted center qh" style="margin-top:14px;font-size:12.5px">Tap a ring to log it, or a chore icon to tick it. The Galaxy ring opens Cosmos.</div>
   </div></div>`;
 }
 const morningDone = (S, item) => !!S.td.morning[item] || (/orrery/i.test(item) && S.wakeLogged) || (/^water$/i.test(item.trim()) && S.td.water > 0);
 function ctxHTML(S) {
   const chk = (on, label, a) => `<button class="check slim ${on ? 'on' : ''}" data-act="${a}"><span class="box">${on ? '✓' : ''}</span><span>${esc(label)}</span></button>`;
   const lines = [];
-  if (S.drift) lines.push(`<div class="soft">${esc(S.driftLine)}</div>`);
+  const Q = !!store.quiet, H3 = (html) => (Q ? '' : html);
+  if (S.drift && !Q) lines.push(`<div class="soft">${esc(S.driftLine)}</div>`);
   S.bdaySoon.forEach((b) => lines.push(`<div class="soft">🎂 ${esc(bdayLine(b))}</div>`));
   if (!S.isDay) {
     const wrote = !!(S.nd.journal || '').trim();
-    return `${lines.join('')}<h3 style="color:#8E8EF5">Tonight</h3>${chk(S.brushed, 'Brush teeth', 'brush')}${chk(wrote, wrote ? "Tonight's line is written" : "One line for today's journal", 'tab:journal')}
-      <h3 style="color:${COL.yellow};margin-top:16px">After u wake</h3><div class="preview">${store.morningList.map((m) => `<span>${esc(m)}</span>`).join('')}</div>
-      <div class="muted" style="margin-top:8px">Edit this list in Settings.</div>`;
+    return `${lines.join('')}${H3('<h3 style="color:#8E8EF5">Tonight</h3>')}${chk(S.brushed, 'Brush teeth', 'brush')}${chk(wrote, wrote ? "Tonight's line is written" : "One line for today's journal", 'tab:journal')}
+      ${H3(`<h3 style="color:${COL.yellow};margin-top:16px">After u wake</h3>`)}<div class="preview" style="${Q ? 'margin-top:12px' : ''}">${store.morningList.map((m) => `<span>${esc(m)}</span>`).join('')}</div>
+      ${H3('<div class="muted" style="margin-top:8px">Edit this list in Settings.</div>')}`;
   }
   const morning = S.nowMin < S.wakeMin + 180 && store.morningList.some((m) => !morningDone(S, m));
   if (morning) {
-    lines.push(`<h3 style="color:${COL.yellow}">After waking</h3>` + store.morningList.map((m, i) => chk(morningDone(S, m), m, 'morn:' + i)).join(''));
-    if (S.fasted) lines.push(`<div class="muted" style="margin-top:10px">${esc(S.fastedLine)}</div>`);
+    lines.push(H3(`<h3 style="color:${COL.yellow}">After waking</h3>`) + store.morningList.map((m, i) => chk(morningDone(S, m), m, 'morn:' + i)).join(''));
+    if (S.fasted && !Q) lines.push(`<div class="muted" style="margin-top:10px">${esc(S.fastedLine)}</div>`);
     return lines.join('');
   }
+  if (Q) return lines.join('');
   if (S.fasted) lines.push(`<div class="soft">${esc(S.fastedLine)}</div>`);
   const td = S.td;
   lines.push(`<h3>Today so far</h3><div class="sofar"><span style="color:${COL.green}">Satisfying ${dur(S.focusMin)}</span><span style="color:${COL.pink}">Gym ${td.gymMin || 0}m</span><span style="color:${COL.orange}">中文 ${td.mandarin || 0}m</span><span style="color:${COL.purple}">Protein ${td.protein || 0}g</span><span style="color:${COL.water}">Water ${litres(td.water || 0)}</span></div>`);
   return lines.join('');
 }
 function quickHTML(S) {
+  if (store.quiet) {
+    const ib = (label, a, cls, aria) => `<button class="pill ${cls || ''}" data-act="${a}" aria-label="${aria}" data-tip="${esc(aria)}">${label}</button>`;
+    if (!S.isDay) return `<div class="quick">${ib('✎', 'tab:journal', 'fill night', "Tonight's line")}</div>`;
+    return `<div class="quick">${S.wakeLogged ? '' : ib('☀︎', 'awake', 'yellow fill', "I'm awake")}${ib('+25m', 'focus:25', S.wakeLogged ? 'green fill' : '', '+25 min satisfying work')}${ib('💧', 'water:250', '', '+250 ml')}${ib('💧💧', 'water:500', '', '+500 ml')}${ib('🍽', 'sheet:protein', '', 'Food & sugar')}</div>`;
+  }
   if (!S.isDay) return `<div class="quick">${pill("Write tonight's line", 'tab:journal', 'fill night')}</div>`;
   return `<div class="quick">${S.wakeLogged ? '' : pill("☀︎ I'm awake", 'awake', 'yellow fill')}${pill('+25m satisfying work', 'focus:25', S.wakeLogged ? 'green fill' : '')}${pill('💧 +250 ml', 'water:250')}${pill('+500 ml', 'water:500')}${pill('Food & sugar…', 'sheet:protein')}</div>`;
 }
@@ -667,10 +825,48 @@ function journalCard(S) {
     <textarea class="field" data-f="journal" rows="2" maxlength="280" placeholder="One line about today…" style="margin-top:10px">${esc(S.td.journal || '')}</textarea>
     <div class="muted" style="margin-top:6px">One line is plenty. Future u will love reading these.</div></div>`;
 }
+const DREAM_TAGS = ['calm', 'weird', 'scary', 'lucid', 'joyful', 'flying', 'chase', 'falling', 'water', 'people'];
+let dreamDraft = null, dreamQ = '', dreamMore = false;
+const newDream = () => { const S = compute(Date.now()); return { title: '', text: '', vivid: 3, tags: [], lucid: false, date: addDays(S.today, -1) }; };
+function dreamSheet() {
+  const d = dreamDraft || (dreamDraft = newDream());
+  if (store.quiet && !dreamMore) return `<div class="dream-hero quiet"><div class="dream-glyph">✦</div></div>
+    <div class="card dream-card"><textarea class="field" id="drText" data-f="dr:text" rows="5" placeholder="…" aria-label="Dream">${esc(d.text)}</textarea>
+      <div class="row" style="margin-top:12px;justify-content:space-between">${pill('✦', 'dreamSave', 'blue fill')}<span class="row">${pill('⋯', 'drMore')}${pill('✕', 'closeSheet')}</span></div></div>`;
+  return `<div class="dream-hero"><div class="dream-glyph">✦</div><div style="font-size:21px;font-weight:700">Catch the dream before it fades ✦</div><div class="muted">Fragments are fine. A colour, a place, a feeling.</div></div>
+    <div class="card dream-card">
+      <input class="field" id="drTitle" data-f="dr:title" value="${esc(d.title)}" placeholder="Title (optional)">
+      <textarea class="field" id="drText" data-f="dr:text" rows="4" placeholder="What happened? Write fast, fix nothing…" style="margin-top:8px">${esc(d.text)}</textarea>
+      <div class="lbl" style="margin-top:12px">Vividness</div><div class="vivid">${[1, 2, 3, 4, 5].map((n) => `<button class="vv ${d.vivid >= n ? 'on' : ''}" data-act="drVivid:${n}" aria-label="Vividness ${n}">${n <= d.vivid ? '●' : '○'}</button>`).join('')}<span class="muted">${['', 'faint', 'hazy', 'clear', 'vivid', 'like real life'][d.vivid]}</span></div>
+      <div class="lbl" style="margin-top:12px">Mood</div><div class="tags">${DREAM_TAGS.map((t) => `<button class="tag ${d.tags.includes(t) ? 'on' : ''}" data-act="drTag:${t}">${t}</button>`).join('')}</div>
+      <div class="row" style="margin-top:12px;justify-content:space-between"><button class="check slim ${d.lucid ? 'on' : ''}" data-act="drLucid" style="flex:1"><span class="box">${d.lucid ? '✓' : ''}</span><span>Lucid: I knew I was dreaming</span></button></div>
+      <label class="lbl">Night of<input type="date" class="field slim" data-f="dr:date" value="${esc(d.date)}" style="width:auto"></label>
+      <div class="row" style="margin-top:14px">${pill('Save dream', 'dreamSave', 'blue fill')}${pill('No dream today', 'closeSheet')}</div></div>`;
+}
+function dreamStatsHTML() {
+  const D = store.dreams;
+  if (!D.length) return '<div class="muted">No dreams caught yet. Tomorrow morning, tap "I\'m awake" and write the first one.</div>';
+  const counts = {}; D.forEach((d) => d.tags.forEach((t) => { counts[t] = (counts[t] || 0) + 1; }));
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  return `<div class="dstats"><div><b>${D.length}</b><span>dream${D.length === 1 ? '' : 's'}</span></div><div><b>${D.filter((d) => d.lucid).length}</b><span>lucid</span></div><div><b>${(D.reduce((a, d) => a + d.vivid, 0) / D.length).toFixed(1)}</b><span>avg vividness</span></div></div>${top.length ? `<div class="muted" style="margin-top:8px">Most common: ${top.map(([t, n]) => `<span class="tag on sm">${t} · ${n}</span>`).join(' ')}</div>` : ''}`;
+}
+function dreamListHTML() {
+  const q = dreamQ.trim().toLowerCase();
+  const list = [...store.dreams].sort((a, b) => (b.date + b.at).localeCompare(a.date + a.at) || b.at - a.at)
+    .filter((d) => !q || `${d.title} ${d.text} ${d.tags.join(' ')} ${d.lucid ? 'lucid' : ''} ${d.date}`.toLowerCase().includes(q));
+  if (!list.length) return store.dreams.length ? '<div class="muted">No dreams match that search.</div>' : '';
+  return list.slice(0, 50).map((d) => `<div class="dream"><div class="row" style="justify-content:space-between;flex-wrap:nowrap"><div><div style="font-weight:600">${esc(d.title || 'Untitled dream')}${d.lucid ? ' <span class="tag on sm">lucid</span>' : ''}</div>
+    <div class="muted mono" style="font-size:12px">Night of ${esc(d.date)} · ${'●'.repeat(d.vivid)}${'○'.repeat(5 - d.vivid)}</div></div><button class="pill" style="padding:4px 10px;font-size:12px" data-act="dreamDel:${d.id}" aria-label="Delete dream">✕</button></div>
+    ${d.text ? `<div class="dream-text">${esc(d.text)}</div>` : ''}${d.tags.length ? `<div class="tags" style="margin-top:6px">${d.tags.map((t) => `<span class="tag sm">${esc(t)}</span>`).join('')}</div>` : ''}</div>`).join('') + (list.length > 50 ? `<div class="muted">Showing the newest 50 of ${list.length}.</div>` : '');
+}
 function lightCard() {
   return `<div class="card"><h3 style="color:${COL.yellow}">Light & sleep</h3><div class="row">${pill("☀︎ I'm awake", 'awake', 'yellow fill')}<span class="muted" data-t="wakeLine"></span></div>
     <div style="margin-top:12px;font-size:15px;line-height:1.5" data-t="lightLine"></div><div style="margin-top:8px;font-size:15px;line-height:1.5" data-t="sleepLine"></div>
-    <div class="muted" style="margin-top:8px" data-t="zonesLine"></div></div>`;
+    <div class="muted" style="margin-top:8px" data-t="zonesLine"></div>
+    <div class="dream-sec"><div class="row" style="justify-content:space-between"><h3 style="color:#B48CFF;margin:0">✦ Dream journal</h3>${pill('+ Log a dream', 'dreamNew', 'blue fill')}</div>
+      <div data-h="dreamStats" style="margin-top:10px"></div>
+      <input class="field slim" data-f="dreamQ" value="${esc(dreamQ)}" placeholder="Search dreams, tags, dates…" style="margin-top:10px" aria-label="Search dreams">
+      <div data-h="dreamList" style="margin-top:8px"></div></div></div>`;
 }
 const ANCHORS = [['wake', 'from waking'], ['sunset', 'from sunset'], ['bed', 'from bedtime']];
 const LENS = [15, 20, 30, 45, 60, 90, 120, 150, 180, 240];
@@ -684,8 +880,30 @@ function shapeCard() {
     <details class="sub"><summary>Adjust the shape</summary><div class="muted" style="margin:4px 0 8px">Each block moves with its anchor: wake up later and the morning slides with u. Sunset blocks follow the seasons.</div>${rows}
       <div class="row" style="margin-top:12px">${pill('+ Add a block', 'blkAdd', 'yellow fill')}${pill('Back to the default rhythm', 'blkReset')}</div></details></div>`;
 }
+function choresCard() {
+  const rows = store.chores.map((c) => `<div class="blk"><div class="row" style="flex-wrap:nowrap">
+      <select class="field slim icon-pick" data-f="choreIcon:${c.id}" aria-label="Icon">${(CHORE_ICONS.includes(c.icon) ? CHORE_ICONS : [c.icon, ...CHORE_ICONS]).map((ic) => `<option ${ic === c.icon ? 'selected' : ''}>${ic}</option>`).join('')}</select>
+      <input class="field slim" data-f="choreName:${c.id}" value="${esc(c.name)}" style="flex:1" aria-label="Chore name"><button class="pill" data-act="choreDel:${c.id}" aria-label="Delete chore">✕</button></div>
+    <div class="row" style="margin-top:6px"><input type="time" class="field slim" data-f="choreTime:${c.id}" value="${hm(c.time)}" style="width:auto" aria-label="Time">
+      <select class="field slim" data-f="choreRep:${c.id}" style="width:auto" aria-label="Repeat">${[['daily', 'Daily'], ['weekdays', 'Chosen days'], ['every', 'Every N days'], ['weekly', 'Weekly']].map(([v, l]) => `<option value="${v}" ${c.repeat === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      ${c.repeat === 'weekdays' ? `<div class="wds">${WD_SHORT.map((d, i) => `<button class="wd ${(c.days || []).includes(i) ? 'on' : ''}" data-act="choreDay:${c.id}:${i}" aria-label="${d}">${d[0]}</button>`).join('')}</div>` : ''}
+      ${c.repeat === 'every' ? `<label class="muted inl">every <input type="number" min="2" max="60" class="field slim" data-f="choreN:${c.id}" value="${Math.max(2, +c.n || 2)}" style="width:64px"> days from <input type="date" class="field slim" data-f="choreStart:${c.id}" value="${choreStart(c)}" style="width:auto"></label>` : ''}
+      ${c.repeat === 'weekly' ? `<select class="field slim" data-f="choreWd:${c.id}" style="width:auto">${WD_SHORT.map((d, i) => `<option value="${i}" ${(+c.wd || 0) === i ? 'selected' : ''}>${d}</option>`).join('')}</select>` : ''}</div></div>`).join('');
+  return `<div class="card"><h3 style="color:${COL.yellow}">Chores on the sun</h3><div class="muted">Each chore sits on the day dial at its time. Tap an icon on Now to tick it. ◐ Helix shows what's coming.</div>
+    <div data-h="choreList" style="margin-top:10px"></div>
+    <details class="sub"><summary>Edit chores</summary><div class="muted" style="margin:4px 0 8px">🦷 Brush teeth is built in at bedtime.</div>${rows}
+      <div class="row" style="margin-top:12px">${pill('+ Add a chore', 'choreAdd', 'yellow fill')}</div></details></div>`;
+}
+function choreListHTML(S) {
+  if (!store.chores.length) return '<div class="muted">No chores yet. Add one below.</div>';
+  return store.chores.map((c) => {
+    const due = dueOn(c, S.today), done = choreDone(c, S.today), od = due && !done && S.nowMin > c.time + 30, nx = choreNext(c, S), st = choreStreak(c, S);
+    const status = due ? (done ? 'done today ✓' : od ? 'overdue, whenever u can' : 'today ' + hm(c.time)) : nx ? 'next ' + nx.label : 'not scheduled';
+    return `<div class="shape-row ${od ? 'od' : ''}"><button class="chip-ic ${done ? 'done' : ''}" data-act="chore:${c.id}:${S.today}" ${due ? '' : 'disabled'} aria-label="Tick ${esc(c.name)}">${c.icon}</button><span class="nm">${esc(c.name)}<span class="muted" style="display:block;font-size:12.5px">${repeatText(c)} · ${status}${st ? ` · streak ${st}` : ''}</span></span></div>`;
+  }).join('');
+}
 function viewToday(S) {
-  return `${title('Today', 'todaySub')}${shapeCard()}<div class="cols"><div>${focusCard()}${gymCard(S)}${mandarinCard(S)}</div><div>${waterCard()}${proteinCard(S)}${journalCard(S)}${checksCard()}${lightCard()}</div></div>`;
+  return `${title('Today', 'todaySub')}${shapeCard()}${choresCard()}<div class="cols"><div>${focusCard()}${gymCard(S)}${mandarinCard(S)}</div><div>${waterCard()}${proteinCard(S)}${journalCard(S)}${checksCard()}${lightCard()}</div></div>`;
 }
 function viewCycles(S) {
   const goals = !store.goals.length
@@ -768,6 +986,7 @@ function viewSettings(S) {
   const P = store.place, R = store.reminders;
   const tog = (k, label) => `<button class="check ${R[k] ? 'on' : ''}" data-act="rem:${k}"><span class="box">${R[k] ? '✓' : ''}</span><span>${label}</span></button>`;
   return `${title('Settings', '')}<div class="cols"><div>
+    <div class="card"><h3>Quiet mode</h3><button class="check ${store.quiet ? 'on' : ''}" data-act="quiet" aria-pressed="${!!store.quiet}"><span class="box">${store.quiet ? '✓' : ''}</span><span>Quiet mode: no labels, no chatter</span></button><div class="muted" style="margin-top:8px">The face stays visual. Long-press anything to see what it is. Turn it off to bring back the labels, Orrery's voice and nudges.</div></div>
     <div class="card"><h3>You</h3><label class="lbl">What should Orrery call u?<input class="field" data-f="name" value="${esc(store.name)}" placeholder="Lav"></label><label class="lbl">Birth date (YYYY-MM-DD)<input class="field" data-f="birth" value="${esc(store.birth)}" placeholder="YYYY-MM-DD"></label>
       <label class="lbl">Life expectancy for the Life ring (years)<input class="field" type="number" data-f="lifeYears" value="${store.lifeYears}" min="30" max="120"></label></div>
     <div class="card"><h3>Daily goals</h3>
@@ -783,8 +1002,9 @@ function viewSettings(S) {
     <div class="card"><h3>Colour palette</h3><div class="muted">Tap one to try it. It applies straight away and is saved with ur backup.</div>
       <div class="palgrid">${Object.entries(PALETTES).map(([id, P]) => `<button class="pal ${store.palette === id ? 'on' : ''}" data-act="pal:${id}" aria-pressed="${store.palette === id}">${swatchSVG(P)}<span>${P.name}</span></button>`).join('')}
         <button class="pal ${store.palette === 'custom' ? 'on' : ''}" data-act="pal:custom" aria-pressed="${store.palette === 'custom'}"><span data-swatch="custom">${swatchSVG(resolvePalette('custom', store.custom))}</span><span>Custom</span></button></div>
-      ${store.palette === 'custom' ? `<div class="customgrid">${CUSTOM_KEYS.map(([k, l]) => { const P = resolvePalette('custom', store.custom); const v = k === 'accent' ? P.accent : k === 'galaxy' ? P.galaxy[1] : k === 'moon' ? P.moon[1] : k === 'sun' ? P.sun[0] : P.habits[k]; return `<label class="cpick"><input type="color" data-f="pc:${k}" value="${v}"><span>${l}</span></label>`; }).join('')}</div>
+      ${store.palette === 'custom' ? `<div class="customgrid">${CUSTOM_KEYS.map(([k, l]) => { const P = resolvePalette('custom', store.custom); const v = k === 'accent' ? P.accent : k === 'galaxy' ? P.galaxy[1] : k === 'sunRing' ? P.sunRing[1] : k === 'moon' ? P.moon[1] : k === 'sun' ? P.sun[0] : P.habits[k]; return `<label class="cpick"><input type="color" data-f="pc:${k}" value="${v}"><span>${l}</span></label>`; }).join('')}</div>
         <div class="row" style="margin-top:10px">${pill('Reset custom colours', 'palReset')}</div>` : ''}</div>
+    <div class="card"><h3>Chores</h3><div class="muted">Add, edit or delete chores (icon, name, time, repeat) in Today → Chores on the sun.</div><div class="row" style="margin-top:10px">${pill('Edit chores', 'editChores')}</div></div>
     <div class="card"><h3>After-waking checklist</h3><div class="muted">One item per line. It shows on the night screen as a preview, and in the morning as ticks.</div>
       <textarea class="field" data-f="morningList" rows="5" style="margin-top:10px">${esc(store.morningList.join('\n'))}</textarea></div>
     <div class="card"><h3>Reminders</h3>${tog('sunrise', 'At sunrise: get outside light')}${tog('habits', '2 h before sunset: habits still open')}${tog('review', '30 min after sunset: sunset review')}${tog('teeth', 'Before bed: brush teeth')}${tog('birthdays', '3 days before a birthday, and on the day')}
@@ -830,6 +1050,7 @@ function bind(S) {
   const deep = deepIdx >= 0 ? `<div class="card" style="text-align:center;font-size:16px;line-height:1.55">${esc(deepMsgs(S)[deepIdx])}<div style="margin-top:10px">${pill('Another', 'deep')} ${pill('Close', 'deepClose')}</div></div>` : '';
   const T = {
     placeLine: `ORRERY · ${P.name.toUpperCase()}`,
+    orbitBtn: store.orbit ? 'Flat' : 'Helix',
     greet: S.greet, nowLine: S.nowLine, nowTag: S.nowTag, nextLine: S.nextLine,
     zoneDo: S.isTurnday ? 'Happy Turnday. The Earth is home again.' : S.zoneDo,
     zoneSub: `${S.zoneName} · ${S.sunLine}`,
@@ -900,6 +1121,8 @@ function bind(S) {
     journalList: (() => { const e = Object.entries(store.days).filter(([, d]) => (d.journal || '').trim()).sort((a, b) => b[0].localeCompare(a[0])); return e.length ? e.map(([k, d]) => `<div class="meal" style="display:block"><div class="muted mono">${k}</div><div style="margin-top:2px">${esc(d.journal)}</div></div>`).join('') : '<div class="muted">No lines yet. Tonight\'s will be the first.</div>'; })(),
     conv: convHTML(S),
     ctx: ctxHTML(S), quick: quickHTML(S),
+    choreList: choreListHTML(S),
+    dreamStats: dreamStatsHTML(), dreamList: dreamListHTML(),
     sugarSeg: ['low', 'med', 'high'].map((k) => `<button data-act="sugar:${k}" class="${td.sugar === k ? 'on' : ''}">${k === 'med' ? 'Medium' : k[0].toUpperCase() + k.slice(1)}</button>`).join(''),
     shapeList: S.shape.map((b) => { const isNow = S.nowBlock && S.nowBlock.id === b.id; return `<div class="shape-row ${isNow ? 'now' : ''}"><span class="dot" style="background:${b.col}"></span><span class="mono">${hm(b.start)}–${hm(b.end)}</span><span class="nm">${esc(b.name)}</span>${isNow ? '<span class="tag">now</span>' : S.nextBlock && S.nextBlock.id === b.id ? '<span class="tag nx">next</span>' : ''}</div>`; }).join('') || '<div class="muted">No blocks yet. Add one below.</div>',
   };
@@ -924,6 +1147,7 @@ function sheetHTML(kind, S) {
     case 'mandarin': return head('Mandarin', COL.orange) + mandarinCard(S);
     case 'protein': return head('Protein', COL.purple) + proteinCard(S);
     case 'water': return head('Water', COL.water) + waterCard();
+    case 'dream': return (store.quiet && !dreamMore ? '' : head('Dream journal', '#B48CFF')) + dreamSheet();
     case 'moon': return head('Moon', COL.cyan) + `<div class="card"><div style="font-size:20px;font-weight:700" data-t="moonName"></div><div class="muted" data-t="moonSub"></div><label class="lbl"><span data-t="intLabel"></span><input class="field" data-f="intention" value="${esc(store.intentions[S.moonKey] || '')}" placeholder="One thing this Moon is for…"></label></div>`;
     case 'wheel': return head('Galaxy', COL.red) + `<div class="card"><div style="font-size:15px;line-height:1.55" data-t="galaxyLine"></div><div style="margin-top:12px">${pill('✦ Deep Look', 'deep', 'blue fill')}</div><div data-h="deep"></div></div>`;
     case 'sun': return head('Sun dial', COL.yellow) + lightCard() + journalCard(S);
@@ -948,7 +1172,7 @@ function renderTop() {
 function renderTabs() {
   renderTop();
   $('#tabs').innerHTML = `<div class="brand">Orrery</div><div class="brand-sub">A calendar of orbits</div>` +
-    TABS.map(([id, label, icon]) => `<button class="tab ${tab === id ? 'on' : ''} tab-${id}" data-act="tab:${id}" aria-label="${label}">${icon}<span>${label}</span></button>`).join('');
+    TABS.map(([id, label, icon]) => `<button class="tab ${tab === id ? 'on' : ''} tab-${id}" data-act="tab:${id}" aria-label="${label}" data-tip="${label}">${icon}<span>${label}</span></button>`).join('');
 }
 function render() {
   const S = compute(Date.now());
@@ -974,7 +1198,7 @@ function notify(title, body) {
       return;
     }
   } catch (e) { /* fall through to toast */ }
-  toast(`${title}: ${body}`);
+  toast(`${title}: ${body}`, 1);
 }
 function reminders(S) {
   if (S.sun.polar) return;
@@ -992,7 +1216,7 @@ function reminders(S) {
   save();
 }
 let toastTimer = null; const toastQ = [];
-function toast(msg) { toastQ.push(msg); if (!toastTimer) nextToast(); }
+function toast(msg, must) { if (store.quiet && !must) return; toastQ.push(msg); if (!toastTimer) nextToast(); }
 function nextToast() {
   const el = $('#toast'), msg = toastQ.shift();
   if (!msg) { el.classList.remove('show'); toastTimer = null; return; }
@@ -1001,6 +1225,7 @@ function nextToast() {
 }
 
 // ===================== ACTIONS =====================
+function openChoreEditor() { const d = $$('#view details.sub').find((x) => /Edit chores/.test(x.textContent)); if (d) d.open = true; }
 function changeDay(fn) { const d = dayOf(dkey(Date.now())); fn(d); save(); tick(); }
 function exportData() {
   const blob = new Blob([JSON.stringify(store, null, 2)], { type: 'application/json' });
@@ -1008,7 +1233,7 @@ function exportData() {
   a.href = URL.createObjectURL(blob); a.download = `orrery-backup-${dkey(Date.now())}.json`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  toast('Backup downloaded.');
+  toast('Backup downloaded.', 1);
 }
 function act(a) {
   const [cmd, arg, arg2] = a.split(':');
@@ -1017,7 +1242,26 @@ function act(a) {
     case 'tab': tab = arg; closeSheet(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); history.replaceState(null, '', '#' + arg); return;
     case 'sheet': openSheet(arg); return;
     case 'closeSheet': closeSheet(); return;
-    case 'awake': changeDay((d) => { const S = compute(Date.now()); d.wake = Math.round(S.nowMin); }); toast('Good morning. Light first, then the hard thing.'); return;
+    case 'awake': {
+      changeDay((d) => { const S = compute(Date.now()); d.wake = Math.round(S.nowMin); });
+      toast('Good morning. Light first, then the hard thing.');
+      dreamDraft = newDream(); dreamMore = false;
+      if (!store.dreams.some((x) => x.date === dreamDraft.date)) openSheet('dream');
+      return;
+    }
+    case 'dreamNew': dreamDraft = newDream(); dreamMore = false; openSheet('dream'); return;
+    case 'drMore': dreamMore = true; openSheet('dream'); return;
+    case 'quiet': store.quiet = !store.quiet; save(); applyPalette(); render(); return;
+    case 'drVivid': dreamDraft.vivid = clamp(num, 1, 5); openSheet('dream'); return;
+    case 'drTag': { const t = dreamDraft.tags; dreamDraft.tags = t.includes(arg) ? t.filter((x) => x !== arg) : [...t, arg]; if (arg === 'lucid') dreamDraft.lucid = dreamDraft.tags.includes('lucid'); openSheet('dream'); return; }
+    case 'drLucid': dreamDraft.lucid = !dreamDraft.lucid; if (dreamDraft.lucid && !dreamDraft.tags.includes('lucid')) dreamDraft.tags.push('lucid'); if (!dreamDraft.lucid) dreamDraft.tags = dreamDraft.tags.filter((x) => x !== 'lucid'); openSheet('dream'); return;
+    case 'dreamSave': {
+      const d = dreamDraft || newDream();
+      if (!d.text.trim() && !d.title.trim()) { toast('Even one word counts. Write what u remember.', 1); return; }
+      store.dreams.push({ id: 'd' + Date.now(), date: /^\d{4}-\d{2}-\d{2}$/.test(d.date) ? d.date : dkey(Date.now()), title: d.title.trim(), text: d.text.trim(), vivid: d.vivid, tags: [...d.tags], lucid: d.lucid, at: Date.now() });
+      dreamDraft = null; save(); closeSheet(); tick(); toast('Dream caught ✦'); return;
+    }
+    case 'dreamDel': store.dreams = store.dreams.filter((x) => x.id !== arg); save(); tick(); return;
     case 'focus': changeDay((d) => { d.focus = Math.max(0, d.focus + num); }); return;
     case 'gym': changeDay((d) => { d.gymMin = Math.max(0, (d.gymMin || 0) + num); d.gym = d.gymMin > 0; }); return;
     case 'water': changeDay((d) => { d.water = Math.max(0, (d.water || 0) + num); }); return;
@@ -1025,13 +1269,33 @@ function act(a) {
     case 'start': store.timer = Date.now(); save(); tick(); return;
     case 'stop': if (store.timer !== null) { const m = Math.min(600, Math.max(0, (Date.now() - store.timer) / 60000)); store.timer = null; changeDay((d) => { d.focus += Math.round(m); }); } return;
     case 'chk': changeDay((d) => { d[arg] = !d[arg]; }); return;
+    case 'peek': {
+      const pk = $('#now-peek'); if (!pk) return; pk.classList.add('show'); clearTimeout(window.__peekT); window.__peekT = setTimeout(() => pk.classList.remove('show'), 3200); return;
+    }
+    case 'orbit': {
+      store.orbit = !store.orbit; save(); choreVer++;
+      const f = $('#nowFace'); if (f) { f.classList.toggle('orbit-on', store.orbit); const b = f.querySelector('.orbit-btn'); if (b) b.setAttribute('aria-pressed', store.orbit); }
+      tick(); return;
+    }
+    case 'chore': {
+      const c = store.chores.find((x) => x.id === arg); if (!c) return;
+      const k = arg2 || dkey(Date.now()), d = dayOf(k); d.chores = d.chores || {}; d.chores[c.id] = !d.chores[c.id]; save(); choreVer++; tick();
+      const S = compute(Date.now()), nx = choreNext(c, S), st = choreStreak(c, S);
+      toast(d.chores[c.id] ? `${c.icon} ${c.name} ✓${st > 1 ? ` · streak ${st}` : ''}${nx ? ` · next ${nx.label}` : ''}` : `${c.icon} ${c.name} unticked${nx ? ` · next ${nx.label}` : ''}`);
+      return;
+    }
+    case 'brushOn': { const d = dayOf(arg); d.brushed = !d.brushed; save(); choreVer++; tick(); toast(d.brushed ? '🦷 Teeth ✓' : '🦷 Teeth unticked'); return; }
+    case 'choreAdd': { const S = compute(Date.now()); store.chores.push({ id: 'c' + Date.now(), icon: '✨', name: 'New chore', time: Math.min(1439, (Math.floor(S.nowMin / 60) + 1) * 60), repeat: 'daily', created: S.today }); save(); choreVer++; render(); openChoreEditor(); return; }
+    case 'choreDel': store.chores = store.chores.filter((c) => c.id !== arg); save(); choreVer++; render(); openChoreEditor(); return;
+    case 'choreDay': store.chores = store.chores.map((c) => { if (c.id !== arg) return c; const ds = new Set(c.days || []), n = +arg2; if (ds.has(n)) ds.delete(n); else ds.add(n); return { ...c, days: [...ds].sort() }; }); save(); choreVer++; render(); openChoreEditor(); return;
+    case 'editChores': tab = 'today'; render(); history.replaceState(null, '', '#today'); openChoreEditor(); return;
     case 'pal': store.palette = PALETTES[arg] || arg === 'custom' ? arg : DEFAULT_PALETTE; save(); applyPalette(); render(); toast(`Palette: ${resolvePalette(store.palette, store.custom).name}.`); return;
     case 'palReset': store.custom = {}; save(); applyPalette(); render(); return;
-    case 'brush': { const S = compute(Date.now()), d = dayOf(S.nightKey); d.brushed = !d.brushed; save(); tick(); if (d.brushed) toast('Teeth ✓. Sleep well. I have the orbits.'); return; }
+    case 'brush': { const S = compute(Date.now()), d = dayOf(S.nightKey); d.brushed = !d.brushed; choreVer++; save(); tick(); if (d.brushed) toast('Teeth ✓. Sleep well. I have the orbits.'); return; }
     case 'morn': changeDay((d) => { const k = store.morningList[num]; if (k) d.morning[k] = !d.morning[k]; }); return;
     case 'sugar': changeDay((d) => { d.sugar = d.sugar === arg ? null : arg; }); return;
     case 'goalAdd': {
-      const name = ($('#gName').value || '').trim(); if (!name) { toast('Start with question 1. Rough is fine.'); return; }
+      const name = ($('#gName').value || '').trim(); if (!name) { toast('Start with question 1. Rough is fine.', 1); return; }
       store.goals.push({ name, done: ($('#gDone').value || '').trim(), step: ($('#gStep').value || '').trim(), pct: 0 }); save(); closeSheet(); render(); toast('Plotted. This Turn has a direction.'); return;
     }
     case 'goalDel': store.goals.splice(num, 1); save(); render(); return;
@@ -1041,7 +1305,7 @@ function act(a) {
     case 'blkReset': store.shape = DEFAULT_SHAPE.map((b) => ({ ...b })); save(); render(); toast('Back to the default rhythm.'); return;
     case 'meal': {
       const g = parseFloat(($('#mealG') || {}).value), text = (($('#mealText') || {}).value || '').trim();
-      if (isNaN(g) || g < 0) { toast('Type the protein grams first.'); return; }
+      if (isNaN(g) || g < 0) { toast('Type the protein grams first.', 1); return; }
       changeDay((d) => { d.meals.push({ text, g: Math.round(g), at: Date.now() }); d.protein = d.meals.reduce((s, m) => s + m.g, 0); });
       $('#mealG').value = ''; $('#mealText').value = ''; return;
     }
@@ -1060,16 +1324,16 @@ function act(a) {
       render(); return;
     }
     case 'geo':
-      if (!navigator.geolocation) { toast('No location on this device.'); return; }
+      if (!navigator.geolocation) { toast('No location on this device.', 1); return; }
       navigator.geolocation.getCurrentPosition((p) => {
         store.place = { lat: +p.coords.latitude.toFixed(4), lon: +p.coords.longitude.toFixed(4), tz: -new Date().getTimezoneOffset() / 60, name: 'My location' };
-        save(); render(); toast('Location set.');
-      }, () => toast('Location was not allowed. Staying put.'), { timeout: 10000 });
+        save(); render(); toast('Location set.', 1);
+      }, () => toast('Location was not allowed. Staying put.', 1), { timeout: 10000 });
       return;
     case 'pune': store.place = { ...DEFAULT_PLACE }; save(); render(); return;
     case 'export': exportData(); return;
     case 'import': $('#importFile').click(); return;
-    case 'reset': if (confirmReset) { store = emptyStore(); confirmReset = false; save(); applyPalette(); toast('Fresh start.'); } else { confirmReset = true; setTimeout(() => { confirmReset = false; }, 5000); } render(); return;
+    case 'reset': if (confirmReset) { store = emptyStore(); confirmReset = false; save(); applyPalette(); toast('Fresh start.', 1); } else { confirmReset = true; setTimeout(() => { confirmReset = false; }, 5000); } render(); return;
     default: return;
   }
 }
@@ -1091,6 +1355,26 @@ function field(f, v) {
     case 'lat': if (!isNaN(n) && Math.abs(n) <= 90) store.place = { ...store.place, lat: n, name: 'Custom' }; break;
     case 'lon': if (!isNaN(n) && Math.abs(n) <= 180) store.place = { ...store.place, lon: n, name: 'Custom' }; break;
     case 'tz': if (!isNaN(n) && Math.abs(n) <= 14) store.place = { ...store.place, tz: n, name: 'Custom' }; break;
+    case 'choreIcon': case 'choreName': case 'choreTime': case 'choreRep': case 'choreN': case 'choreStart': case 'choreWd': {
+      const key = { choreIcon: 'icon', choreName: 'name', choreTime: 'time', choreRep: 'repeat', choreN: 'n', choreStart: 'start', choreWd: 'wd' }[k];
+      let val = v;
+      if (key === 'time') { const m = /^(\d{1,2}):(\d{2})/.exec(v); if (!m) return; val = clamp(+m[1] * 60 + +m[2], 0, 1439); }
+      if (key === 'n') { val = parseInt(v, 10); if (!(val >= 2)) return; }
+      if (key === 'wd') val = parseInt(v, 10) || 0;
+      store.chores = store.chores.map((c) => {
+        if (c.id !== i) return c;
+        const nc = { ...c, [key]: val };
+        if (key === 'repeat' && val === 'weekdays' && !(nc.days || []).length) nc.days = [1, 2, 3, 4, 5];
+        if (key === 'repeat' && val === 'every') { nc.n = nc.n || 3; nc.start = nc.start || dkey(Date.now()); }
+        if (key === 'repeat' && val === 'weekly' && nc.wd == null) nc.wd = wdOf(dkey(Date.now()));
+        return nc;
+      });
+      choreVer++; save(); tick();
+      if (key === 'repeat') { render(); openChoreEditor(); }
+      return;
+    }
+    case 'dr': if (dreamDraft) dreamDraft[i] = v; return;
+    case 'dreamQ': dreamQ = v; tick(); return;
     case 'pc': if (/^#[0-9a-fA-F]{6}$/.test(v)) { store.custom = { ...store.custom, [i]: v }; applyPalette(); const sw = $('[data-swatch="custom"]'); if (sw) sw.innerHTML = swatchSVG(PAL); } break;
     case 'name': store.name = v.trim().slice(0, 24); break;
     case 'morningList': store.morningList = v.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 10); break;
@@ -1116,12 +1400,78 @@ function field(f, v) {
   save(); tick();
 }
 
+// ===================== QUIET TOOLTIPS: long-press anything to see what it is =====================
+function tipText(el) {
+  const S = compute(Date.now());
+  if (el.dataset.tip === 'orbit') return store.orbit ? 'Flat view' : 'Helix view';
+  if (el.dataset.tip) return el.dataset.tip;
+  const r = el.dataset.ring;
+  if (r) {
+    if (r === 'wheel') return `Galaxy · ${(S.wf * 100).toFixed(4)}% · ${(S.wf * 360).toFixed(3)}°`;
+    if (r === 'year') return `Sun · day ${S.yearDay}/${S.yearDays}`;
+    if (r === 'moon') return `Moon · ${phaseName(S.moonDays)} · ${(S.illum * 100).toFixed(0)}% lit`;
+    if (r === 'sun') return `${S.hhmm} · ${S.sunLine}`;
+    if (HABITS[r]) { const goal = { focus: dur(store.goalMin), gym: store.gymGoal + 'm', mandarin: store.mandarinGoal + 'm', water: litres(store.waterGoal), protein: store.proteinGoal + 'g' }[r]; return `${HABITS[r].name} · ${HABITS[r].v(S)} / ${goal}`; }
+    return RINGS[r] ? RINGS[r].name : '';
+  }
+  const a = el.dataset.act || '';
+  const [cmd, id, k] = a.split(':');
+  if (cmd === 'chore') { const c = store.chores.find((x) => x.id === id); if (!c) return ''; const d = dayOf(k), when = k === S.today ? 'today' : k === addDays(S.today, 1) ? 'tomorrow' : WD_SHORT[wdOf(k)]; return `${c.icon} ${c.name} · ${when} ${hm(c.time)}${d.chores && d.chores[c.id] ? ' · done' : ''}`; }
+  if (cmd === 'brushOn' || cmd === 'brush') return '🦷 Brush teeth before sleep';
+  if (cmd === 'peek') return '';
+  return '';
+}
+function showTip(text, x, y) {
+  let t = $('#tip'); if (!t) { t = document.createElement('div'); t.id = 'tip'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = text; t.classList.add('show');
+  const w = Math.min(280, window.innerWidth - 24);
+  t.style.maxWidth = w + 'px';
+  const r = t.getBoundingClientRect();
+  t.style.left = Math.max(12, Math.min(window.innerWidth - r.width - 12, x - r.width / 2)) + 'px';
+  t.style.top = Math.max(12, y - r.height - 18) + 'px';
+  clearTimeout(showTip.h); showTip.h = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
 // ===================== BOOT =====================
 function boot() {
   load();
   applyPalette();
   const h = (location.hash || '').slice(1);
   if (VIEWS[h]) tab = h;
+  // drag the helix sideways to turn it; it eases back to NOW-at-front
+  let drag = null, dragMoved = false, raf = 0;
+  const redrawHelix = () => { raf = 0; const og = $('#now-orbit'), S = compute(Date.now()); if (og) { og.innerHTML = helixSVG(S, ringLayout(RING_ORDER).dial, helixPhi); og.dataset.k = ''; } };
+  const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.addEventListener('pointerdown', (e) => {
+    const f = e.target.closest('#nowFace.orbit-on svg'); if (!f) return;
+    drag = { x: e.clientX, phi: helixPhi, w: f.getBoundingClientRect().width }; dragMoved = false;
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!drag) return; const dx = e.clientX - drag.x; if (Math.abs(dx) > 6) dragMoved = true; if (!dragMoved) return;
+    helixPhi = drag.phi + (dx / drag.w) * 300; if (!raf) raf = requestAnimationFrame(redrawHelix);
+  });
+  const endDrag = () => {
+    if (!drag) return; drag = null;
+    if (!dragMoved) return;
+    setTimeout(() => { dragMoved = false; }, 0);
+    if (reduce()) { helixPhi = 0; redrawHelix(); return; }
+    const from = helixPhi, t0 = performance.now(), back = () => { const t = Math.min(1, (performance.now() - t0) / 700), e2 = 1 - (1 - t) ** 3; helixPhi = from * (1 - e2); redrawHelix(); if (t < 1) requestAnimationFrame(back); };
+    setTimeout(() => requestAnimationFrame(back), 1600);
+  };
+  document.addEventListener('pointerup', endDrag); document.addEventListener('pointercancel', endDrag);
+  // long-press (~0.45 s) shows a fading tooltip and swallows the click that follows
+  let lp = null, lpFired = false;
+  document.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('[data-ring],[data-tip],.chore[data-act],[data-act^="brush"]'); if (!el) return;
+    lpFired = false; const x = e.clientX, y = e.clientY;
+    lp = { x, y, t: setTimeout(() => { const txt = tipText(el); if (!txt) return; lpFired = true; showTip(txt, x, y); if (navigator.vibrate) navigator.vibrate(8); }, 450) };
+  });
+  const lpCancel = () => { if (lp) { clearTimeout(lp.t); lp = null; } };
+  document.addEventListener('pointermove', (e) => { if (lp && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > 8) lpCancel(); });
+  document.addEventListener('pointerup', lpCancel); document.addEventListener('pointercancel', lpCancel);
+  document.addEventListener('contextmenu', (e) => { if (e.target.closest('#nowFace,.tabbar,#tabs,.quick')) e.preventDefault(); });
+  document.addEventListener('click', (e) => { if (lpFired) { lpFired = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('click', (e) => { if (dragMoved) { e.stopPropagation(); e.preventDefault(); } }, true);
   document.addEventListener('click', (e) => {
     const r = e.target.closest('[data-ring]'); if (r) { if (r.dataset.ring === 'wheel' && tab === 'now') act('tab:cosmos'); else openSheet(r.dataset.ring); return; }
     const b = e.target.closest('[data-act]'); if (b) { e.preventDefault(); act(b.dataset.act); return; }
@@ -1137,7 +1487,7 @@ function boot() {
   document.addEventListener('change', (e) => {
     if (e.target.id !== 'importFile' || !e.target.files[0]) return;
     const rd = new FileReader();
-    rd.onload = () => { try { const s = sanitize(JSON.parse(rd.result)); if (!s) throw new Error('bad'); store = s; save(); applyPalette(); render(); toast('Backup imported. Welcome back.'); } catch (err) { toast("That file isn't an Orrery backup."); } };
+    rd.onload = () => { try { const s = sanitize(JSON.parse(rd.result)); if (!s) throw new Error('bad'); store = s; save(); applyPalette(); render(); toast('Backup imported. Welcome back.', 1); } catch (err) { toast("That file isn't an Orrery backup."); } };
     rd.readAsText(e.target.files[0]); e.target.value = '';
   });
   window.addEventListener('storage', (e) => { if (e.key === KEY) { load(); applyPalette(); render(); } });
