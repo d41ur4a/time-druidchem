@@ -6,7 +6,7 @@
 <title>Orrery</title>
 <meta name="description" content="Orrery: a private calendar of orbits. Sun dial, galaxy, moon, and daily habits.">
 <meta name="theme-color" content="#07040F">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="dark light">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,9 +16,12 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-mac-512.png">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div class="titlebar" aria-hidden="true"></div>
+<div class="sky" id="sky" aria-hidden="true"><div class="neb n1"></div><div class="neb n2"></div><div class="neb n3"></div><div class="stars s1"></div><div class="stars s2"></div><div class="vig"></div></div>
 <main class="app"><div id="view"></div></main>
 <nav class="tabbar" id="tabs" aria-label="Sections"></nav>
 <div class="topbar" id="topbar"></div>
