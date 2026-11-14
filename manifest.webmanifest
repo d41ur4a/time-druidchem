@@ -6,8 +6,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#07040F",
-  "theme_color": "#07040F",
+  "background_color": "#06050C",
+  "theme_color": "#06050C",
   "icons": [
     {
       "src": "icons/icon-mac-512.png",

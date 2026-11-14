@@ -1,7 +1,7 @@
 :root {
-  --bg: #07040F; --accent: #7B2FF7; --accent-ink: #fff; --water: #38E8FF; --glow1: rgba(123,47,247,.2); --glow2: rgba(0,198,255,.11); --glow3: rgba(46,242,176,.08); --bar: rgba(14,12,22,.74); --sheet: rgba(30,26,42,.94);
+  --bg: #06050C; --accent: #7B2FF7; --accent-ink: #fff; --water: #38E8FF; --glow1: rgba(123,47,247,.2); --glow2: rgba(0,198,255,.11); --glow3: rgba(46,242,176,.08); --bar: rgba(10,8,18,.86); --sheet: rgba(16,13,28,.97);
   --ink: #fff; --muted: #8e8e93; --dim: #636366; --hair: rgba(255,255,255,0.09);
-  --glass: rgba(28,28,30,0.62); --field: rgba(118,118,128,0.24);
+  --glass: rgba(14,11,24,0.72); --field: rgba(255,255,255,0.055);
   --green: #30D158; --cyan: #64D2FF; --yellow: #FFD60A; --purple: #BF5AF2; --blue: #0A84FF; --orange: #FF9F0A; --pink: #FF6482; --red: #FF375F;
   --ease: cubic-bezier(.2,.8,.2,1);
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -203,15 +203,15 @@ details.sub summary::after { content: " ›"; } details.sub[open] summary::after
 .blk-t { color: var(--muted); font-size: 13.5px; min-width: 96px; }
 .blk .pill { padding: 6px 10px; font-size: 13px; }
 .empty { text-align: center; padding: 22px 8px 8px; }
-.empty-ic { font-size: 26px; color: var(--yellow); margin-bottom: 6px; animation: breathe 4s ease-in-out infinite; }
+.empty-ic { font-size: 26px; color: var(--yellow); margin-bottom: 6px; }
 .goal { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--hair); }
 .person .bd { display: flex; align-items: center; gap: 6px; }
 .person .bd .field { width: auto; }
 .person .pill { padding: 7px 11px; font-size: 13px; }
-.breathe { animation: breathe 5s ease-in-out infinite; }
+.breathe { }
 @keyframes breathe { 0%, 100% { opacity: .28; } 50% { opacity: .55; } }
 .tooth { transition: opacity .6s var(--ease); }
-.tooth.due circle { animation: toothPulse 3s ease-in-out infinite; }
+.tooth.due circle { stroke-opacity: 1; }
 @keyframes toothPulse { 0%, 100% { stroke-opacity: .5; } 50% { stroke-opacity: 1; } }
 @media (min-width: 900px) { .topbar { top: 18px; right: 24px; } .hello { padding-top: 0; } }
 @media (max-width: 899px) { .tabbar { justify-content: space-around; overflow: visible; } .tab { flex: 1; min-width: 0; } }
@@ -243,13 +243,17 @@ details.sub summary::after { content: " ›"; } details.sub[open] summary::after
 .chore text.emo { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
 .face svg .chore text { pointer-events: none; }
 .chore.done { opacity: .5; }
-.chore .halo { animation: halo 2.6s ease-in-out infinite; }
+.chore .halo { stroke-opacity: .6; }
 @keyframes halo { 0%, 100% { stroke-opacity: .25; } 50% { stroke-opacity: .9; } }
-.dialg, .orbitg, #now-time, #now-sub, #now-spin { transition: transform .75s var(--ease), opacity .55s var(--ease); transform-box: view-box; }
-.dialg { transform-origin: 300px 300px; }
-.orbitg { transform-origin: 300px 380px; transform: scaleY(2.6); opacity: 0; pointer-events: none; }
-.orbit-on .dialg { transform: scaleY(.38); opacity: 0; pointer-events: none; }
-.orbit-on .orbitg { transform: none; opacity: 1; pointer-events: auto; }
+.dialg, .orbitg { transition: none; }
+#now-time, #now-sub, #now-spin { transition: opacity .3s var(--ease); }
+.orbitg { opacity: 0; pointer-events: none; }
+.orbit-on .dialg { opacity: 0; pointer-events: none; }
+.orbit-on .orbitg { opacity: 1; pointer-events: auto; }
+/* v15 morph: JS drives both layers frame by frame; the real dial beads hide while their twins travel */
+.morphing .orbitg { opacity: 1 !important; }
+.morphing #now-chores .chore { visibility: hidden; }
+.fade-sw .dialg, .fade-sw .orbitg { transition: opacity .18s linear; }
 .orbit-on #now-spin { opacity: 0; }
 .orbit-on #now-time, .orbit-on #now-sub { opacity: 0; }
 .face.orbit-on svg { touch-action: pan-y; cursor: grab; }
@@ -268,7 +272,7 @@ label.inl { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap
 /* ===== dream journal ===== */
 .dream-sec { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--hair); }
 .dream-hero { text-align: center; padding: 8px 6px 4px; background: radial-gradient(260px 120px at 50% 30%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 70%); }
-.dream-glyph { font-size: 30px; color: #B48CFF; animation: breathe 4s ease-in-out infinite; text-shadow: 0 0 18px rgba(180,140,255,.8); }
+.dream-glyph { font-size: 30px; color: #B48CFF; text-shadow: 0 0 18px rgba(180,140,255,.8); }
 .dream-card { background: rgba(123,47,247,.08); border-color: rgba(180,140,255,.22); }
 .vivid { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 .vv { width: 38px; height: 38px; border-radius: 19px; border: 1px solid var(--hair); background: rgba(255,255,255,.05); color: #B48CFF; font-size: 16px; cursor: pointer; }
@@ -389,7 +393,7 @@ body.plotting, body.plotting * { cursor: grabbing !important; -webkit-user-selec
 /* ===================== v11 · Mac-first ===================== */
 .desk-only { display: none !important; }
 .side-spacer { display: none; }
-.selring { animation: selp 1.6s var(--ease) infinite; pointer-events: none; }
+.selring { pointer-events: none; }
 @keyframes selp { 50% { stroke-opacity: .45; } }
 kbd { font: 600 11px var(--font); color: var(--muted); border: 1px solid var(--hair); border-bottom-width: 2px; border-radius: 6px; padding: 2px 6px; background: rgba(255,255,255,.04); white-space: nowrap; }
 @media (min-width: 900px) {
@@ -519,10 +523,7 @@ body.light .overlay { background: rgba(0,0,0,.12); }
 
 /* ===================== v12 · orbs ===================== */
 .orb .orb-b { transform-box: fill-box; transform-origin: center; }
-.orb .breathe-o { animation: orbBreath 5.2s ease-in-out infinite; }
-.orb .breathe-o .orb-glow { animation: orbGlow 5.2s ease-in-out infinite; animation-delay: inherit; }
 .orb .pulse { animation: orbPulse 2.2s ease-in-out infinite; }
-.orb .pulse .orb-glow { animation: orbGlowStrong 2.2s ease-in-out infinite; animation-delay: inherit; }
 .orb .orb-ping { transform-box: fill-box; transform-origin: center; animation: orbPing 2.2s ease-out infinite; animation-delay: inherit; pointer-events: none; }
 .orb .orb-glow { pointer-events: none; }
 @keyframes orbBreath { 50% { transform: scale(1.06); } }
@@ -557,16 +558,15 @@ html, body { background: #05030C !important; }
 body::before { display: none !important; }
 /* atmosphere: slow nebula drift, two parallax star layers, a soft vignette (all composited layers) */
 .sky { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: radial-gradient(120% 90% at 50% 40%, #0B0720 0%, #06040F 60%, #030208 100%); }
-.neb { position: absolute; border-radius: 50%; will-change: transform; opacity: .9; }
-.neb.n1 { width: 80vmax; height: 62vmax; left: -18vmax; top: -22vmax; background: radial-gradient(closest-side, rgba(123,47,247,.34), rgba(123,47,247,.10) 55%, transparent 75%); animation: neb1 90s ease-in-out infinite alternate; }
-.neb.n2 { width: 70vmax; height: 58vmax; right: -22vmax; top: 8vmax; background: radial-gradient(closest-side, rgba(46,139,255,.24), rgba(46,139,255,.07) 55%, transparent 75%); animation: neb2 110s ease-in-out infinite alternate; }
-.neb.n3 { width: 74vmax; height: 50vmax; left: 10vmax; bottom: -30vmax; background: radial-gradient(closest-side, rgba(46,242,176,.15), rgba(46,242,176,.04) 55%, transparent 75%); animation: neb3 130s ease-in-out infinite alternate; }
+.neb { position: absolute; border-radius: 50%; opacity: .9; }
+.neb.n1 { width: 80vmax; height: 62vmax; left: -18vmax; top: -22vmax; background: radial-gradient(closest-side, rgba(123,47,247,.34), rgba(123,47,247,.10) 55%, transparent 75%); }
+.neb.n2 { width: 70vmax; height: 58vmax; right: -22vmax; top: 8vmax; background: radial-gradient(closest-side, rgba(46,139,255,.24), rgba(46,139,255,.07) 55%, transparent 75%); }
+.neb.n3 { width: 74vmax; height: 50vmax; left: 10vmax; bottom: -30vmax; background: radial-gradient(closest-side, rgba(46,242,176,.15), rgba(46,242,176,.04) 55%, transparent 75%); }
 @keyframes neb1 { to { transform: translate3d(8vmax, 5vmax, 0) scale(1.08); } }
 @keyframes neb2 { to { transform: translate3d(-7vmax, 6vmax, 0) scale(1.12); } }
 @keyframes neb3 { to { transform: translate3d(-6vmax, -5vmax, 0) scale(1.06); } }
-.stars { position: absolute; left: 0; top: 0; width: 1px; height: 1px; border-radius: 50%; will-change: transform; transition: transform 1.2s cubic-bezier(.2,.7,.2,1); }
-.stars.s1 { transform: translate3d(calc(var(--px) * -8px), calc(var(--py) * -8px), 0); }
-.stars.s2 { width: 1.6px; height: 1.6px; transform: translate3d(calc(var(--px) * -22px), calc(var(--py) * -22px), 0); animation: twinkle 7s ease-in-out infinite; }
+.stars { position: absolute; left: 0; top: 0; width: 1px; height: 1px; border-radius: 50%; }
+.stars.s2 { width: 1.6px; height: 1.6px; }
 @keyframes twinkle { 50% { opacity: .6; } }
 .vig { position: absolute; inset: 0; background: radial-gradient(130% 100% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%); }
 @media (prefers-reduced-motion: reduce) { .neb, .stars { animation: none !important; transition: none !important; } }
@@ -672,7 +672,7 @@ body.quiet .mseg.cat button span { display: none; }
 .sheet .q13 { padding: 4px 2px; }
 /* bottom row of light orbs */
 .porb { cursor: pointer; } .porb:hover { filter: brightness(1.3); }
-.porb.full .po-glow { animation: poGlow 4s ease-in-out infinite; }
+.porb.full .po-glow { opacity: .9; }
 @keyframes poGlow { 50% { opacity: .65; } }
 @media (prefers-reduced-motion: reduce) { .porb.full .po-glow { animation: none; } }
 /* ---- pearl / dawn ---- */
@@ -702,7 +702,7 @@ body.light .orb .orb-glow { mix-blend-mode: normal; }
   .insp-head .pill { width: 30px; height: 30px; min-width: 0; padding: 0; border-radius: 50%; border: 0; background: rgba(255,255,255,.06); color: var(--t2); display: grid; place-items: center; }
   .insp-head .pill.green.fill { background: color-mix(in srgb, var(--life) 28%, transparent); color: var(--life); }
 }
-html { background: #05030C !important; } body, body.light { background: transparent !important; }
+html { background: #030207 !important; } body, body.light { background: transparent !important; }
 html:has(body.light) { background: #F4F1F8 !important; }
 @media (min-width: 900px) { .tb-seg.desk-only { display: inline-flex !important; } }
 @media (max-width: 899px) { .tb-seg.desk-only { display: none !important; } }
@@ -726,8 +726,65 @@ html:has(body.light) { background: #F4F1F8 !important; }
 }
 /* v14 · blank first run: the + breathes softly until the first thing is plotted */
 .tr-add.first { position: relative; color: var(--t1, #fff); }
-.tr-add.first::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #9D6BFF) 70%, transparent), 0 0 18px color-mix(in srgb, var(--accent, #9D6BFF) 55%, transparent); animation: firstPulse 3.2s ease-in-out infinite; pointer-events: none; }
+.tr-add.first::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent, #9D6BFF) 70%, transparent), 0 0 18px color-mix(in srgb, var(--accent, #9D6BFF) 55%, transparent); animation: firstPulse 3.2s ease-in-out 3; pointer-events: none; }
 @keyframes firstPulse { 0%, 100% { opacity: .25; transform: scale(.92); } 50% { opacity: 1; transform: scale(1.06); } }
 @media (prefers-reduced-motion: reduce) { .tr-add.first::after { animation: none; opacity: .6; } }
 .tray:has(> .tr-add.first:only-child) { justify-content: center; }
 .tray:has(> .tr-add.first:only-child) { display: flex !important; justify-content: center; width: 100%; box-sizing: border-box; margin-left: 0; margin-right: 0; padding-top: 18px; padding-bottom: 18px; }
+
+/* v15: the sky is one static layer (painted once, never animated) */
+.sky { contain: strict; }
+
+/* ===== v16 · deeper dark: near-black sky, quieter nebula, darker glass, no stray greys ===== */
+body:not(.light) { --glass-1: rgba(16,12,30,.58); --glass-2: rgba(8,6,16,.62); --edge: rgba(255,255,255,.06); --t2: rgba(230,226,250,.64); --t3: rgba(230,226,250,.40); }
+body:not(.light) .sky { background: radial-gradient(120% 90% at 50% 40%, #0A0814 0%, #06050C 58%, #030207 100%); }
+body:not(.light) .neb.n1 { opacity: .5; }
+body:not(.light) .neb.n2 { opacity: .42; }
+body:not(.light) .neb.n3 { opacity: .4; }
+body:not(.light) .seg { background: rgba(255,255,255,.055); }
+body:not(.light) .toast { background: rgba(14,11,24,.94); border: 1px solid var(--edge); }
+body:not(.light) .sheet-body::before { background: rgba(255,255,255,.16); }
+body:not(.light) .topbtn { background: rgba(12,10,22,.72); }
+body:not(.light) .sgr { opacity: 1; }
+body.light .sgr { opacity: .35; }
+.body { cursor: pointer; }
+body.light .seg { background: rgba(118,118,128,.14); }
+body:not(.light) .pill.on { background: rgba(196,176,255,.16); color: #EEE8FF; box-shadow: inset 0 0 0 1px rgba(196,176,255,.28); }
+
+/* ===== v17 · ultra-minimal glyphs: flat dark discs, thin coloured rings, single-weight line pictograms ===== */
+.gly { display: block; flex: none; }
+.tr-orb, body.light .tr-orb { background: color-mix(in srgb, var(--c) 9%, var(--bg)); box-shadow: inset 0 0 0 1.25px var(--c); color: color-mix(in srgb, var(--c) 82%, #fff); }
+.tr-orb .gly { filter: none; }
+.tr-orb.sm { box-shadow: inset 0 0 0 1.25px var(--c); }
+.tr-it.done .tr-orb, body.insp-on .tr-it.done .tr-orb { width: 8px; height: 8px; background: var(--c); box-shadow: none; }
+body.light .tr-orb { color: color-mix(in srgb, var(--c) 80%, #000); }
+.qa-orb.tr-orb { box-shadow: inset 0 0 0 1.25px var(--c); }
+.tab svg.ti, .topbtn .gly { width: 20px; height: 20px; }
+.chip-ic { display: grid; place-items: center; color: color-mix(in srgb, var(--c, #fff) 82%, #fff); background: color-mix(in srgb, var(--c, #fff) 8%, var(--bg)); border: 1.25px solid var(--c, var(--hair)); }
+.chip-ic.done { background: var(--c, var(--green)); border-color: var(--c, var(--green)); color: var(--bg); }
+.chip-ic.done::after { display: none; }
+.pc .pi { display: inline-grid; place-items: center; width: 22px; color: var(--t2); }
+.pc.on .pi { color: #fff; }
+#cmenu:not(.mac) .cm-b button .gly { margin: 0 auto; } #cmenu.mac .cm-b button .gly { margin: 0; }
+.insp-empty .glyph .gly { width: 16px; height: 16px; }
+.gpill { display: inline-flex; align-items: center; gap: 6px; }
+.gl-line { display: flex; align-items: center; gap: 8px; }
+.drag-ghost { color: var(--ink); }
+.drag-ghost .gly { width: 22px; height: 22px; }
+.emo-more { position: relative; flex: none; }
+.emo-more > summary { list-style: none; cursor: pointer; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: color-mix(in srgb, var(--c) 82%, #fff); background: color-mix(in srgb, var(--c) 9%, var(--bg)); box-shadow: inset 0 0 0 1.25px var(--c); }
+.emo-more > summary::-webkit-details-marker { display: none; }
+.emo-more[open] > summary { box-shadow: inset 0 0 0 1.25px var(--c), 0 0 0 3px color-mix(in srgb, var(--c) 25%, transparent); }
+.emo-more .icon-pick { position: absolute; left: 0; top: 40px; z-index: 5; }
+#nowFace .orb:hover .orb-core { filter: none; stroke-width: 2; }
+#nowFace .orb.done:hover { filter: brightness(1.3); }
+
+/* ===== v18 · sky-coloured strands: life vs work by weight and a tiny marker, not by hue ===== */
+.tr-orb.mk-work::after, .tr-orb.mk-both::after { content: ""; position: absolute; left: 50%; bottom: -2px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 1px var(--bg); }
+.tr-orb.mk-both::after { width: 10px; margin-left: -5px; background: radial-gradient(circle at 2px 2px, var(--c) 1.6px, transparent 2px), radial-gradient(circle at 8px 2px, var(--c) 1.6px, transparent 2px); box-shadow: none; }
+.tr-it.done .tr-orb::after { display: none; }
+
+/* v18: Life / Work / Both chips share the sky hue: solid, hollow, pair */
+.cdot.ck-life, .cdot.ck-work, .cdot.ck-both { background: var(--c); color: var(--c); }
+.cdot.ck-work { background: transparent; box-shadow: inset 0 0 0 1.5px var(--c) !important; }
+.cdot.ck-both { width: 12px !important; border-radius: 4px; background: radial-gradient(circle at 3px 50%, var(--c) 2.6px, transparent 3px), radial-gradient(circle at calc(100% - 3px) 50%, var(--c) 2.6px, transparent 3px); box-shadow: none !important; }

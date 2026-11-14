@@ -33,7 +33,7 @@ const NEW_MOON_REF = Date.UTC(2000, 0, 6, 18, 14, 0) / 1000;
 // Each palette: background, surface (cards), text, muted, accent (+ text on accent), galaxy ring [deep, bright, aurora tail?],
 // moon ring, sun dial [morning, afternoon, evening], the 5 habit rings, and 3 soft background glows.
 const PALETTES = {
-  aurora: { name: 'Nebula Aurora', bg: '#07040F', surface: 'rgba(28,20,48,0.58)', text: '#F4F1FF', muted: '#A39CC4', accent: '#7B2FF7', accentInk: '#FFFFFF',
+  aurora: { name: 'Nebula Aurora', bg: '#06050C', surface: 'rgba(14,11,26,0.74)', text: '#F4F1FF', muted: '#A39CC4', accent: '#7B2FF7', accentInk: '#FFFFFF',
     lifeStrand: ['#12A88C', '#2EF2B0'], workStrand: ['#7B2FF7', '#2E8BFF'],
     sunRing: ['#B14BFF', '#FF7AD9'], galaxy: ['#7B2FF7', '#2E8BFF', '#2EF2B0'], moon: ['#4F7BFF', '#9FE8FF'], sun: ['#FFC9A8', '#FF7AD9', '#B14BFF'],
     habits: { focus: '#2EF2B0', gym: '#FF5FD2', mandarin: '#FFB347', protein: '#B48CFF', water: '#38E8FF' },
@@ -118,6 +118,51 @@ function sunTimes(y, m, d, lat, lon, tz) {
   const ha = deg(Math.acos(cosH));
   return { rise: noon - 4 * ha, noon, set: noon + 4 * ha, polar: null };
 }
+// v18 · sun elevation at any instant (NOAA solar calculator, with atmospheric refraction), in degrees
+function sunElev(t, lat, lon) {
+  const jd = t / 86400000 + 2440587.5, T = (jd - 2451545) / 36525;
+  const L0 = (((280.46646 + T * (36000.76983 + T * 0.0003032)) % 360) + 360) % 360;
+  const M = 357.52911 + T * (35999.05029 - 0.0001537 * T), e = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+  const C = Math.sin(rad(M)) * (1.914602 - T * (0.004817 + 0.000014 * T)) + Math.sin(rad(2 * M)) * (0.019993 - 0.000101 * T) + Math.sin(rad(3 * M)) * 0.000289;
+  const om = 125.04 - 1934.136 * T, lam = L0 + C - 0.00569 - 0.00478 * Math.sin(rad(om));
+  const eps = 23 + (26 + (21.448 - T * (46.815 + T * (0.00059 - T * 0.001813))) / 60) / 60 + 0.00256 * Math.cos(rad(om));
+  const dec = Math.asin(Math.sin(rad(eps)) * Math.sin(rad(lam))), yv = Math.tan(rad(eps / 2)) ** 2;
+  const eot = 4 * deg(yv * Math.sin(2 * rad(L0)) - 2 * e * Math.sin(rad(M)) + 4 * e * yv * Math.sin(rad(M)) * Math.cos(2 * rad(L0)) - 0.5 * yv * yv * Math.sin(4 * rad(L0)) - 1.25 * e * e * Math.sin(2 * rad(M)));
+  const utcMin = (((t / 60000) % 1440) + 1440) % 1440, ha = rad((utcMin + eot + 4 * lon) / 4 - 180);
+  const el = deg(Math.asin(clamp(Math.sin(rad(lat)) * Math.sin(dec) + Math.cos(rad(lat)) * Math.cos(dec) * Math.cos(ha), -1, 1)));
+  const tn = Math.tan(rad(el));
+  const refr = el > 85 ? 0 : el > 5 ? 58.1 / tn - 0.07 / tn ** 3 + 0.000086 / tn ** 5 : el > -0.575 ? 1735 + el * (-518.2 + el * (103.4 + el * (-12.79 + el * 0.711))) : -20.772 / tn;
+  return el + refr / 3600;
+}
+// the sky by sun elevation: night indigo → navy → purple (astro/nautical) → magenta, peach, orange, gold (civil
+// twilight, golden hour) → soft to bright sky blue at noon. Mixed in OKLab so there are no muddy bands.
+const SKY = [[-90, '#3A3285'], [-18, '#3D3A92'], [-12, '#3B4BAE'], [-8, '#5247B0'], [-4.5, '#7748A9'], [-1.5, '#C0549B'], [0.5, '#EE6E7E'], [2.5, '#FF9270'],
+  [5, '#FFB35F'], [8, '#FFD27C'], [12, '#D3E7EC'], [20, '#A9D7F5'], [35, '#78BEF7'], [55, '#4FA9FF'], [90, '#3F9CFF']];
+const okl = (hex) => { const [r0, g0, b0] = hexRgb(hex).map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  const l = Math.cbrt(0.4122214708 * r0 + 0.5363325363 * g0 + 0.0514459929 * b0), m = Math.cbrt(0.2119034982 * r0 + 0.6806995451 * g0 + 0.1073969566 * b0), q = Math.cbrt(0.0883024619 * r0 + 0.2817188376 * g0 + 0.6299787005 * b0);
+  return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * q, 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * q, 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * q]; };
+const oklHex = ([L, A, B]) => { const l = (L + 0.3963377774 * A + 0.2158037573 * B) ** 3, m = (L - 0.1055613458 * A - 0.0638541728 * B) ** 3, q = (L - 0.0894841775 * A - 1.291485548 * B) ** 3;
+  return '#' + [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * q, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * q, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * q]
+    .map((v) => { v = clamp(v, 0, 1); v = v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055; return Math.round(v * 255).toString(16).padStart(2, '0'); }).join(''); };
+let SKY_OK = null; const skyCache = new Map(), elevCache = new Map();
+function skyCol(el) { // elevation (°) → hex, cached at 0.25°
+  const key = Math.round(clamp(el, -90, 90) * 4); let c = skyCache.get(key); if (c) return c;
+  if (!SKY_OK) SKY_OK = SKY.map(([e2, h]) => [e2, okl(h)]);
+  const x = key / 4; let i = 0; while (i < SKY_OK.length - 2 && x > SKY_OK[i + 1][0]) i++;
+  const [e0, a] = SKY_OK[i], [e1, b] = SKY_OK[i + 1], t = clamp((x - e0) / (e1 - e0), 0, 1), u = t * t * (3 - 2 * t) * 0.35 + t * 0.65;
+  c = oklHex(a.map((v, j) => v + (b[j] - v) * u)); skyCache.set(key, c); return c;
+}
+function elevAt(t) { // cached per minute for the current place
+  const P = store.place || DEFAULT_PLACE, key = `${Math.round(t / 60000)}|${P.lat}|${P.lon}`; let v = elevCache.get(key);
+  if (v === undefined) { if (elevCache.size > 20000) elevCache.clear(); v = sunElev(Math.round(t / 60000) * 60000, P.lat, P.lon); elevCache.set(key, v); }
+  return v;
+}
+// Light theme: pale day-sky tints vanish on white paper, so deepen them a little (hue kept).
+let skyLtOn = false; const skyLt = (c) => (skyLtOn ? mixHex(c, '#1C2547', 0.32) : c);
+const skyAt = (t) => skyLt(skyCol(elevAt(t)));
+// a bead / chip colour: the sky at that time, lifted at night so the ring and glyph stay readable
+const skyInk = (t) => { const el = elevAt(t), c = skyCol(el); if (skyLtOn) return skyLt(c); return el < -3 ? mixHex(c, '#ffffff', clamp((-3 - el) / 10, 0, 1) * 0.42 + 0.1) : c; };
+const choreSky = (c, S) => skyInk(kms(S.today) + (+c.time || 0) * 60000);
 function phaseName(ageDays) {
   const p = ageDays / (SYN / 86400);
   if (p < 0.0339 || p > 0.9661) return 'New moon';
@@ -385,10 +430,10 @@ function applyPalette() {
   const vars = { '--bg': P.bg, '--glass': P.surface, '--ink': P.text, '--muted': P.muted, '--accent': P.accent, '--accent-ink': P.accentInk,
     '--green': P.habits.focus, '--pink': P.habits.gym, '--orange': P.habits.mandarin, '--purple': P.habits.protein, '--water': P.habits.water,
     '--life': P.lifeStrand[1], '--work': P.workStrand[1], '--cyan': P.moon[1], '--blue': P.accent, '--yellow': P.sun[0], '--glow1': P.glow[0], '--glow2': P.glow[1], '--glow3': P.glow[2],
-    '--bar': `rgba(${Math.round(r * 0.6 + 12)},${Math.round(g * 0.6 + 12)},${Math.round(b * 0.6 + 14)},0.74)`, '--sheet': `rgba(${Math.round(r * 0.5 + 26)},${Math.round(g * 0.5 + 26)},${Math.round(b * 0.5 + 30)},0.94)` };
-  const light = isLight(); document.body.classList.toggle('light', light);
-  if (light) Object.assign(vars, { '--bg': '#F5F5F7', '--glass': 'rgba(255,255,255,0.72)', '--ink': '#1D1D1F', '--muted': '#6E6E73', '--dim': '#8E8E93', '--hair': 'rgba(0,0,0,0.10)', '--bar': 'rgba(246,246,248,0.78)', '--sheet': 'rgba(250,250,252,0.95)', '--glow1': 'rgba(123,47,247,0.07)', '--glow2': 'rgba(0,198,255,0.06)', '--glow3': 'rgba(46,242,176,0.05)' });
-  else Object.assign(vars, { '--dim': '#636366', '--hair': 'rgba(255,255,255,0.09)' });
+    '--bar': `rgba(${Math.round(r * 0.6 + 6)},${Math.round(g * 0.6 + 5)},${Math.round(b * 0.6 + 12)},0.86)`, '--sheet': `rgba(${Math.round(r * 0.5 + 11)},${Math.round(g * 0.5 + 9)},${Math.round(b * 0.5 + 19)},0.97)` };
+  const light = isLight(); skyLtOn = light; document.body.classList.toggle('light', light);
+  if (light) Object.assign(vars, { '--bg': '#F5F5F7', '--glass': 'rgba(255,255,255,0.72)', '--ink': '#1D1D1F', '--muted': '#6E6E73', '--dim': '#8E8E93', '--hair': 'rgba(0,0,0,0.10)', '--bar': 'rgba(246,246,248,0.78)', '--sheet': 'rgba(250,250,252,0.95)', '--field': 'rgba(118,118,128,0.14)', '--glow1': 'rgba(123,47,247,0.07)', '--glow2': 'rgba(0,198,255,0.06)', '--glow3': 'rgba(46,242,176,0.05)' });
+  else Object.assign(vars, { '--dim': '#6A6680', '--hair': 'rgba(255,255,255,0.07)', '--field': 'rgba(255,255,255,0.055)' });
   if (light) COL.bg = '#F5F5F7';
   Object.entries(vars).forEach(([k, v]) => R.setProperty(k, v));
   const meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', light ? '#F5F5F7' : P.bg);
@@ -502,49 +547,73 @@ function choreOcc(S, maxD = 2) {
   return out;
 }
 
-// ===================== GLYPHS: one line-icon set for every chore (24×24, round 1.5px strokes) =====================
+// ===================== GLYPHS (v17): one ultra-minimal pictogram set =====================
+// Drawn on a 24 grid with everything inside 3..21 (a 16 grid with 2 px padding, ×1.5). One weight, round caps,
+// no fills, no inner detail, 1–3 primitives each. The same paths are used on beads, tray, inspector, ⌘K, chips,
+// the orb row, the sidebar and the toolbar.
 const C_ = (cx, cy, r) => `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
 const GLYPHS = {
-  water: 'M12 3.5c3 4.2 5.5 7.2 5.5 10.3a5.5 5.5 0 0 1-11 0C6.5 10.7 9 7.7 12 3.5zM9.6 14.6a2.5 2.5 0 0 0 2.2 2.4',
-  gym: 'M3.5 9.5v5M6.5 7v10M17.5 7v10M20.5 9.5v5M6.5 12h11',
-  laundry: 'M4 10.5h16l-1.7 8.5H5.7zM8.5 10.5l2.5-5M15.5 10.5l-2.5-5M9 13.5v2.5M12 13.5v2.5M15 13.5v2.5',
-  broom: 'M16.5 3l-4.8 9.2M6.5 12.5h8.2l1.6 7.5H4.9zM8.6 16.2l-.4 3.8M11.6 16.2v3.8M14.3 16.2l.5 3.8',
-  tooth: 'M8 4.2C5.6 4 4.3 5.8 4.3 8.1c0 2.8 1.6 3.9 2.1 6.7.5 2.9 1 5.2 2.3 5.2 1.4 0 1.2-4.3 3.3-4.3s1.9 4.3 3.3 4.3c1.3 0 1.8-2.3 2.3-5.2.5-2.8 2.1-3.9 2.1-6.7 0-2.3-1.3-4.1-3.7-3.9-1.6.1-2.4 1-4 1s-2.4-.9-4-1z',
-  skin: 'M10 3h4v3h-4zM9 6h6l1.5 3v10.5c0 .8-.7 1.5-1.5 1.5H9c-.8 0-1.5-.7-1.5-1.5V9zM9.8 13.5h4.4',
-  cook: C_(10, 13.5, 5.8) + 'M15.4 11.6L21 9' + C_(10, 13.5, 1.8),
-  bowl: 'M3.5 11.5h17a8.5 8.5 0 0 1-17 0zM8.5 20.5h7M9.5 8c0-1.3 1.2-1.7 1.2-3.2M13.5 8c0-1.3 1.2-1.7 1.2-3.2',
-  eat: C_(12, 12.5, 4.6) + 'M3.5 4v4.5c0 .9.7 1.6 1.5 1.6V20M5 4v3.5M20.5 4c-1.6 1-2.2 3.2-2.2 6.5h2.2V20',
-  inbox: 'M4 13.5L6.5 7h3M14.5 7h3L20 13.5V19H4v-5.5h4.5l1.2 2h4.6l1.2-2H20M12 3.5V11M9.4 8.5L12 11l2.6-2.5',
-  gear: C_(12, 12, 5.2) + C_(12, 12, 1.9) + 'M12 3v1.8M12 19.2V21M3 12h1.8M19.2 12H21M5.6 5.6l1.3 1.3M17.1 17.1l1.3 1.3M5.6 18.4l1.3-1.3M17.1 6.9l1.3-1.3',
-  robot: 'M6 8.5h12v9.5H6zM12 4.5v4M9.5 12.2v.6M14.5 12.2v.6M9.5 15.3h5M3.5 12v3M20.5 12v3' + C_(12, 4, 0.6),
-  music: 'M4.5 15v-3a7.5 7.5 0 0 1 15 0v3M4.5 14h3v6h-3zM16.5 14h3v6h-3z',
-  cart: 'M3 4.5h2.4l2.3 10h9.8L20 7.5H6.3' + C_(9.5, 19, 1.3) + C_(16.5, 19, 1.3),
-  pill: 'M10.6 3.9a4.9 4.9 0 0 1 6.9 6.9l-6.7 6.7a4.9 4.9 0 0 1-6.9-6.9zM7.3 7.2l6.9 6.9',
-  plant: 'M7 14h10l-1.5 6.5h-7zM12 14V8.5M12 9.5C12 6.3 10 4 6.5 4c0 3.7 2.4 5.5 5.5 5.5zM12 11.5c0-2.6 2-4.3 5-4.3 0 3-2 4.3-5 4.3z',
-  paw: C_(7, 10, 1.6) + C_(10.3, 6.5, 1.6) + C_(13.7, 6.5, 1.6) + C_(17, 10, 1.6) + 'M12 12.5c-3 0-5 3.2-5 5.3 0 1.5 1.3 2.2 2.4 2.2 1.1 0 1.6-.6 2.6-.6s1.5.6 2.6.6c1.1 0 2.4-.7 2.4-2.2 0-2.1-2-5.3-5-5.3z',
-  book: 'M4 5h4v14H4zM9 5h4v14H9zM14.4 5.6l3.8-1 3.3 13.7-3.8 1z',
-  calm: C_(12, 6, 2) + 'M5 18.5c2-1 4.5-1.5 7-1.5s5 .5 7 1.5M8.2 15.5L12 11l3.8 4.5M6.5 12.5L12 10.8l5.5 1.7',
-  shower: 'M5 20.5V7.5a3.5 3.5 0 0 1 7 0M8.5 9h7l-3.5-3zM10 12.5v1M13 12.5v1M16 12.5v1M11.5 16v1M14.5 16v1M13 19.5v1',
-  trash: 'M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5',
-  phone: 'M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16.5 16.5 0 0 1 4.5 5.5a2 2 0 0 1 2-2z',
-  laptop: 'M5 6h14v9.5H5zM2.8 18.8h18.4',
-  receipt: 'M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21zM9 8h6M9 11.5h6M9 15h3.5',
-  bed: 'M3 18.5v-11M3 13.5h18v5M21 18.5V16M6 13.5v-2.2c0-.8.7-1.5 1.5-1.5H10c.8 0 1.5.7 1.5 1.5v2.2',
-  walk: C_(13.5, 4.5, 1.8) + 'M9.5 21l2.4-6.2 2.6 2.4V21M11.9 14.8l.8-5.3-3.4 1.6-1.3 3.4M12.7 9.5l2.4 2.8 2.9.6',
-  sun: C_(12, 12, 3.8) + 'M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M5.5 18.5l1.4-1.4M17.1 6.9l1.4-1.4',
-  moon: 'M19.5 14.6A8 8 0 1 1 9.4 4.5a6.5 6.5 0 0 0 10.1 10.1z',
-  mail: 'M3.5 6h17v12h-17zM3.5 6.5l8.5 7 8.5-7',
-  flask: 'M9.5 3h5M10.5 3v6.2L5.2 18.8A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.3-2.2L13.5 9.2V3M7.6 15h8.8',
-  note: 'M9 17.5V5.5l10.5-2v12' + C_(6.5, 17.5, 2.5) + C_(17, 15.5, 2.5),
-  sponge: 'M4 8.5h16v10H4zM8 12v.1M12 14v.1M16 11.5v.1M10 16.2v.1M15 16v.1',
-  car: 'M5 16.5v-4l2.2-5.5h9.6l2.2 5.5v4zM5 12.5h14' + C_(8, 16.5, 1.7) + C_(16, 16.5, 1.7),
-  leaf: 'M5 19c0-8 5-13.5 14-14 .5 9-5 14-13 14zM5 19l7-7',
-  link: C_(9, 12, 4.5) + C_(15, 12, 4.5),
-  flame: 'M12 21c-3.6 0-6-2.4-6-5.6 0-3.4 2.6-5 3.6-8.4 1.6 1.2 2.4 2.6 2.4 4 1-.6 1.6-1.8 1.7-3.2 2.2 1.8 4.3 4.6 4.3 7.6 0 3.2-2.4 5.6-6 5.6z',
-  chat: 'M4.5 5.5h15v10h-8l-4.5 3.5v-3.5h-2.5zM8.5 10.5h7',
-  egg: 'M12 3.5c3.5 0 6.5 5.2 6.5 9.5a6.5 6.5 0 0 1-13 0c0-4.3 3-9.5 6.5-9.5z',
-  spark: 'M12 3.5l1.9 6.1 6.1 1.9-6.1 1.9-1.9 6.1-1.9-6.1-6.1-1.9 6.1-1.9z',
+  water: 'M12 4c3.2 4.2 5 6.9 5 9.5a5 5 0 0 1-10 0C7 10.9 8.8 8.2 12 4z',
+  gym: 'M8 6v12M16 6v12M3 12h18',
+  laundry: 'M4.5 10h15l-2 9h-11zM9 10l3-5 3 5',
+  broom: 'M16 4l-4 8M6.5 20l2-8h7l2 8',
+  tooth: 'M6 5h12v5l-2 9-2.5-6h-3L8 19l-2-9z',
+  skin: 'M10 4h4M8 8h8v12H8zM12 4v4',
+  cook: C_(10, 13, 6) + 'M16 13h5',
+  bowl: 'M4 11h16a8 8 0 0 1-16 0zM12 4v3',
+  eat: 'M8 4v16M17 4c-1.5 2-2 4.5-2 7h2v9M6 4v4a2 2 0 0 0 4 0V4',
+  inbox: 'M4 12v7h16v-7M4 12h5a3 3 0 0 0 6 0h5M12 4v5',
+  gear: 'M12 4l7 4v8l-7 4-7-4V8z' + C_(12, 12, 2.5),
+  robot: 'M6 9h12v9H6zM12 5v4M10 13.5h4',
+  music: 'M5 18v-6a7 7 0 0 1 14 0v6M8 15v4M16 15v4',
+  cart: 'M3 5h3l2 10h10l2-7H7' + C_(9, 19, 1) + C_(17, 19, 1),
+  pill: 'M6.5 13.5l7-7a3.5 3.5 0 0 1 5 5l-7 7a3.5 3.5 0 0 1-5-5zM10 10l4 4',
+  plant: 'M12 20V10M12 10c0-3-2-5-5-5 0 3 2 5 5 5zM12 14c0-2.5 1.8-4.5 4.5-4.5 0 2.5-1.8 4.5-4.5 4.5z',
+  paw: C_(12, 15, 3.5) + C_(7, 10, 1) + C_(12, 6.5, 1) + C_(17, 10, 1),
+  book: 'M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5zM12 6.5v13',
+  calm: C_(12, 6, 2) + 'M5 18h14M8 18l4-7 4 7',
+  shower: 'M6 20V8a4 4 0 0 1 8 0M11 11h6M14 14.5v3.5',
+  trash: 'M5 7h14M10 4h4M7 7l1 13h8l1-13',
+  phone: 'M8 3h8v18H8zM11 18h2',
+  laptop: 'M6 6h12v9H6zM3 18h18',
+  receipt: 'M7 3h10v18l-5-3-5 3zM10 8h4M10 12h4',
+  bed: 'M3 19V7M3 14h18v5M7 11h4',
+  walk: C_(13, 5, 1.5) + 'M9 21l3-7 3 3v4M8 11l4.5-2 3 3',
+  sun: C_(12, 12, 4) + 'M12 3v2M12 19v2M3 12h2M19 12h2',
+  moon: 'M19 14.5A7.5 7.5 0 1 1 9.5 5a6 6 0 0 0 9.5 9.5z',
+  mail: 'M4 6h16v12H4zM4 7l8 6 8-6',
+  flask: 'M10 4h4M11 4v6l-5 9h12l-5-9V4',
+  note: 'M9 18V5l9-2v13' + C_(7, 18, 2) + C_(16, 16, 2),
+  sponge: 'M5 8h14v10H5zM10 13h.01M14 15h.01',
+  car: 'M3 15v-3l2-5h14l2 5v3zM7 18v-3M17 18v-3',
+  leaf: 'M5 19C5 10 10 5 19 5c0 9-5 14-14 14zM5 19l7-7',
+  link: C_(9, 12, 4) + C_(15, 12, 4),
+  flame: 'M12 21a5.5 5.5 0 0 1-5.5-5.5c0-3 2-4.5 2-8 2 1 3.5 3 3.5 4.5 1-1.5 1.2-3.5.5-6 3.5 2.5 5 6 5 9.5A5.5 5.5 0 0 1 12 21z',
+  chat: 'M5 5h14v10h-8l-4 4v-4H5z',
+  egg: 'M12 4c3.5 0 6 5 6 9a6 6 0 0 1-12 0c0-4 2.5-9 6-9z',
+  spark: 'M12 4c.6 5 3 7.4 8 8-5 .6-7.4 3-8 8-.6-5-3-7.4-8-8 5-.6 7.4-3 8-8z',
+  cake: 'M5 20h14v-7H5zM12 13V9M12 5v.01',
+  // UI chrome
+  now: C_(12, 12, 8) + C_(12, 12, 2),
+  heart: 'M12 19.5S4.5 15 4.5 9.5a3.75 3.75 0 0 1 7.5-1 3.75 3.75 0 0 1 7.5 1c0 5.5-7.5 10-7.5 10z',
+  page: 'M6 3h12v18H6zM9 8h6M9 12h6',
+  search: C_(11, 11, 6) + 'M16 16l4 4',
+  panel: 'M4 5h16v14H4zM15 5v14',
+  helix: 'M8 3c0 4.5 8 4.5 8 9s-8 4.5-8 9M16 3c0 4.5-8 4.5-8 9s8 4.5 8 9',
+  dial: C_(12, 12, 8) + 'M12 8v4l3 2',
+  plus: 'M12 5v14M5 12h14',
+  arrow: 'M5 12h14M14 7l5 5-5 5',
+  quiet: C_(12, 12, 8) + 'M8 12h8',
+  half: C_(12, 12, 8) + 'M12 4v16',
+  ring: C_(12, 12, 8),
+  keys: 'M3 7h18v10H3zM7 13h10',
+  mini: 'M6 8h12v8H6z',
+  move: 'M4 12h16M7 9l-3 3 3 3M17 9l3 3-3 3',
+  edit: 'M5 19l1-4L16 5l3 3L9 18z',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
 };
+// one inline <svg> per glyph; the stroke stays ~1.4 CSS px at any size
+const gk = (key, px = 20, cls = '', sw = 1.4) => `<svg class="gly ${cls}" viewBox="0 0 24 24" width="${px}" height="${px}" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="${GLYPHS[key] || GLYPHS.spark}"/></svg>`;
 const GLYPH_OF = { '💧': 'water', '🏋': 'gym', '🧺': 'laundry', '🧹': 'broom', '🦷': 'tooth', '🧴': 'skin', '🍳': 'cook', '🍲': 'bowl', '📥': 'inbox', '⚙': 'gear', '🤖': 'robot', '🎧': 'music',
   '🛒': 'cart', '💊': 'pill', '🪴': 'plant', '🐕': 'paw', '📚': 'book', '🧘': 'calm', '🚿': 'shower', '🗑': 'trash', '📞': 'phone', '💻': 'laptop', '🧾': 'receipt', '🍽': 'eat', '🛏': 'bed',
   '🚶': 'walk', '☀': 'sun', '🌙': 'moon', '✉': 'mail', '🧪': 'flask', '🎸': 'note', '🧽': 'sponge', '🚗': 'car', '✨': 'spark' };
@@ -562,7 +631,7 @@ function glyphKey(icon, name) {
   return 'spark';
 }
 // inline <svg> for HTML (tray, inspector, menus): inherits currentColor
-const glyphHTML = (icon, name, px = 22, cls = '') => `<svg class="gly ${cls}" viewBox="0 0 24 24" width="${px}" height="${px}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${GLYPHS[glyphKey(icon, name)]}"/></svg>`;
+const glyphHTML = (icon, name, px = 22, cls = '') => gk(glyphKey(icon, name), px, cls);
 // shared gradients for the orbs: one body + glow per strand, "both" blends them, a warm tint for overdue
 function orbDefs() {
   const L = COL.life, W = COL.work, B = mixHex(COL.life, COL.work, 0.5), warm = '#FF9F45';
@@ -577,24 +646,22 @@ function orbDefs() {
 const BREATH_S = 5.2, PULSE_S = 2.2;
 // a chore as a glowing bead: o = occurrence, r = radius, st = { k: depth 0..1, next, live (breathes) }
 function orbSVG(o, r, extra = '', st = {}) {
-  const cat = o.cat === 'both' ? 'both' : o.cat === 'work' ? 'work' : 'life', k = st.k == null ? 1 : st.k;
-  const sel = qa && qa.id && o.c && qa.id === o.c.id, col = catCol(cat);
+  const cat = o.cat === 'both' ? 'both' : o.cat === 'work' ? 'work' : 'life', k = st.k == null ? 1 : st.k, sw = st.sw || 1;
+  const sel = qa && qa.id && o.c && qa.id === o.c.id, col = o.t ? skyInk(o.t) : catCol(cat);
   const cls = `chore tap orb${o.done ? ' done' : ''}${o.overdue ? ' overdue' : ''}${sel ? ' sel' : ''}${st.next ? ' nxt' : ''}`;
   const now = Date.now() / 1000, delay = (p) => `animation-delay:-${(now % p).toFixed(2)}s`;
   let inner;
-  if (o.done) { // collapsed into an ember: a bright core, a tiny four-point spark, a whisper of glow
-    const s = r * 0.42;
-    inner = `<circle class="hit" r="${(r * 0.8).toFixed(1)}" fill="transparent"/><circle r="${(r * 1.05).toFixed(1)}" fill="url(#glw-${cat})" opacity=".8"/><path d="M0 ${-s}L${s * 0.22} ${-s * 0.22}L${s} 0L${s * 0.22} ${s * 0.22}L0 ${s}L${-s * 0.22} ${s * 0.22}L${-s} 0L${-s * 0.22} ${-s * 0.22}z" fill="${mixHex(col, '#ffffff', 0.6)}" opacity=".9"/><circle r="${(r * 0.17).toFixed(1)}" fill="#fff"/>`;
-  } else {
-    const warm = o.overdue, gs = r * 0.66, gk = glyphKey(o.icon, o.name), ink = mixHex(col, '#ffffff', 0.88);
-    inner = `<circle class="orb-glow" r="${(r * 2.05).toFixed(1)}" fill="url(#glw-${warm ? 'warm' : cat})" opacity="${(0.55 + 0.45 * k).toFixed(2)}"/>`
-      + (st.next ? `<circle class="orb-ping" r="${r}" fill="none" stroke="${col}" stroke-width="1.6"/>` : '')
-      + `<circle class="orb-core" r="${r}" fill="url(#orb-${cat})"/>`
-      + (warm ? `<circle r="${r}" fill="url(#orb-warm)" opacity=".42"/>` : '')
-      + `<circle r="${r}" fill="url(#orb-hi)" opacity="${(0.35 + 0.5 * k).toFixed(2)}"/><circle r="${(r - 0.4).toFixed(1)}" fill="none" stroke="#fff" stroke-opacity="${(0.12 + 0.2 * k).toFixed(2)}" stroke-width=".8"/>`
-      + `<g transform="translate(${-gs} ${-gs}) scale(${(gs / 12).toFixed(3)})" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPHS[gk]}" stroke="${shade(col, 0.4)}" stroke-opacity=".55" stroke-width="${(3.6 * 12 / gs).toFixed(2)}"/><path d="${GLYPHS[gk]}" stroke="${ink}" stroke-width="${(1.6 * 12 / gs).toFixed(2)}"/></g>`;
+  if (o.done) { // v17: done = a small flat dot
+    inner = `<circle class="hit" r="${(r * 0.8).toFixed(1)}" fill="transparent"/><circle class="orb-dot" r="${(r * 0.3).toFixed(1)}" fill="${col}" opacity=".9"/>`;
+  } else { // v17: a flat dark disc, a thin ring in the strand colour, the glyph in that colour; no gradients or glow
+    const warm = o.overdue, gs = r * 0.74, gkey = glyphKey(o.icon, o.name), lt = isLight();
+    const ring = warm ? '#FF9F45' : col, ink = lt ? shade(ring, 0.8) : mixHex(ring, '#ffffff', 0.18);
+    inner = (st.next ? `<circle class="orb-ping" r="${r}" fill="none" stroke="${ring}" stroke-width="${(1.2 * sw).toFixed(2)}"/>` : '')
+      + `<circle class="orb-core" r="${r}" fill="${mixHex(COL.bg, ring, lt ? 0.06 : 0.1)}" stroke="${ring}" stroke-width="1.25" vector-effect="non-scaling-stroke"/>`
+      + `<g transform="translate(${-gs} ${-gs}) scale(${(gs / 12).toFixed(3)})" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPHS[gkey]}" stroke="${ink}" stroke-width="1.4" vector-effect="non-scaling-stroke"/></g>`
+      + (cat === 'work' ? `<circle class="mk" cy="${r}" r="1.9" fill="${ring}" stroke="${COL.bg}" stroke-width=".8"/>` : cat === 'both' ? `<circle class="mk" cx="-3.4" cy="${(r - 0.4).toFixed(1)}" r="1.7" fill="${ring}" stroke="${COL.bg}" stroke-width=".8"/><circle class="mk" cx="3.4" cy="${(r - 0.4).toFixed(1)}" r="1.7" fill="${ring}" stroke="${COL.bg}" stroke-width=".8"/>` : '');
   }
-  const anim = o.done ? '' : st.next ? ` class="orb-b pulse" style="${delay(PULSE_S)}"` : st.live ? ` class="orb-b breathe-o" style="${delay(BREATH_S)}"` : ' class="orb-b"';
+  const anim = o.done ? '' : st.next ? ` class="orb-b nx" style="${delay(PULSE_S)}"` : ' class="orb-b"'; // v17: only the next chore keeps a single ring ping
   return `<g class="${cls}" data-act="${o.act}" ${extra}>${sel ? `<circle class="selring" r="${r + 6}" fill="none" stroke="${COL.yellow}" stroke-width="2.5"/>` : ''}<g${anim}>${inner}</g></g>`;
 }
 
@@ -606,115 +673,208 @@ const LANE = { life: 0, both: -21, work: -42 };
 function workBlocksOn(S, k) { // Day Shape "work" blocks (Satisfying work) for day k, as absolute ms
   return S.shape.filter((b) => b.kind === 'work').map((b) => ({ b, t0: kms(k) + b.start * 60000, len: +b.len || 0 }));
 }
+function dialBeads(S, D) { // today's beads on the flat dial, spread along their lane so they never overlap
+  const today = choreOcc(S).filter((o) => o.k === S.today && o.id !== 'teeth').sort((a, b) => a.t - b.t);
+  const last = { life: -1e9, work: -1e9, both: -1e9 }, out = new Map();
+  today.forEach((o) => { const m0 = (o.t - kms(S.today)) / 60000, m = Math.max(m0, last[o.cat] + 36); last[o.cat] = m; const r = D + LANE[o.cat], [x, y] = pt(r, dialF(m)); out.set(o.id + o.k, { o, m, r, x, y }); });
+  return out;
+}
+// v18: today's sky around the dial: 10-minute arcs on the life lane, a finer, dimmer copy on the work lane (cached per day)
+let skyRingK = '', skyRingH = '';
+function skyRingSVG(S, D) {
+  const P = store.place || DEFAULT_PLACE, key = `${S.today}|${D}|${P.lat}|${P.lon}|${COL.bg}`;
+  if (key === skyRingK) return skyRingH;
+  let life = '', work = '';
+  for (let m = 0; m < 1440; m += 10) {
+    const c = laneCol(S, 'life', m + 5), cw = laneCol(S, 'work', m + 5);
+    life += `<path d="${arcD(D, m, m + 10.6)}" stroke="${c}"/>`; work += `<path d="${arcD(D + LANE.work, m, m + 10.6)}" stroke="${cw}"/>`;
+  }
+  skyRingK = key;
+  skyRingH = `<g class="skyring" fill="none" pointer-events="none"><g stroke-width="7" opacity=".16">${life}</g><g stroke-width="2.4" opacity=".9">${life}</g><g stroke-width="1.1" opacity=".6">${work}</g></g>`;
+  return skyRingH;
+}
 function flatChoresSVG(S, D) {
   const today = choreOcc(S).filter((o) => o.k === S.today && o.id !== 'teeth').sort((a, b) => a.t - b.t);
-  let g = `<circle cx="${CX}" cy="${CX}" r="${D + LANE.work}" fill="none" stroke="${COL.work}" stroke-opacity=".13" stroke-width="1.2" pointer-events="none"/>`;
+  let g = skyRingSVG(S, D);
   // satisfying-work blocks sit on the work lane; tap one to log focus
-  workBlocksOn(S, S.today).forEach(({ b }) => { if (b.len > 0) g += `<path class="tap wblk" data-ring="focus" d="${arcD(D + LANE.work, b.start, b.start + b.len)}" fill="none" stroke="${COL.work}" stroke-opacity=".38" stroke-width="5" stroke-linecap="round"/>`; });
-  today.forEach((o) => { if (o.len > 0 && o.cat !== 'both') { const m = (o.t - kms(S.today)) / 60000; g += `<path d="${arcD(D + LANE[o.cat], m, m + o.len)}" fill="none" stroke="${catCol(o.cat)}" stroke-opacity=".3" stroke-width="3" stroke-linecap="round" pointer-events="none"/>`; } });
+  workBlocksOn(S, S.today).forEach(({ b }) => { if (b.len > 0) g += `<path class="tap wblk" data-ring="focus" d="${arcD(D + LANE.work, b.start, b.start + b.len)}" fill="none" stroke="${laneCol(S, 'life', b.start + b.len / 2)}" stroke-opacity=".38" stroke-width="5" stroke-linecap="round"/>`; });
+  today.forEach((o) => { if (o.len > 0 && o.cat !== 'both') { const m = (o.t - kms(S.today)) / 60000; g += `<path d="${arcD(D + LANE[o.cat], m, m + o.len)}" fill="none" stroke="${laneCol(S, o.cat, m)}" stroke-opacity=".3" stroke-width="3" stroke-linecap="round" pointer-events="none"/>`; } });
   const last = { life: -1e9, work: -1e9, both: -1e9 };
   const nx = today.find((o) => o.dt >= 0 && !o.done), nextId = nx ? nx.id + nx.k : '';
   today.forEach((o) => {
     const m0 = (o.t - kms(S.today)) / 60000, m = Math.max(m0, last[o.cat] + 36); last[o.cat] = m; // spread icons in a lane so they never overlap
     const r = D + LANE[o.cat], [x, y] = pt(r, dialF(m));
-    if (o.cat === 'both') { const [x0, y0] = pt(D + LANE.work, dialF(m)), [x1, y1] = pt(D, dialF(m)); g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${catCol('both')}" stroke-width="4" stroke-linecap="round" opacity=".8" filter="url(#now-glow)" pointer-events="none"/>`; }
-    g += orbSVG(o, 13, `transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" data-r="${r}"`, { next: nextId === o.id + o.k, live: !o.done && o.dt >= 0 });
+    if (o.cat === 'both') { const [x0, y0] = pt(D + LANE.work, dialF(m)), [x1, y1] = pt(D, dialF(m)); g += `<line x1="${x0.toFixed(1)}" y1="${y0.toFixed(1)}" x2="${x1.toFixed(1)}" y2="${y1.toFixed(1)}" stroke="${skyInk(o.t)}" stroke-width="3" stroke-linecap="round" opacity=".75" pointer-events="none"/>`; }
+    g += orbSVG(o, 13, `transform="translate(${x.toFixed(1)} ${y.toFixed(1)})" data-r="${r}" data-key="${o.id + o.k}"`, { next: nextId === o.id + o.k });
   });
   return orbDefs() + g;
 }
 // ---- time helix: today's loop tilted in perspective with NOW at the front, climbing one turn per 24 h ----
-const HX = { cx: 300, cy: 424, rx: 180, ry: 52, pitch: 92, ahead: 66 * 60, past: 4 * 60, seg: 15 };
+const HX = { cx: 300, cy: 432, rx: 168, ry: 24, pitch: 112, ahead: 58 * 60, past: 4 * 60, seg: 15 };
 let helixPhi = 0, helixZoom = 1; // drag/scroll rotation (degrees) and pinch zoom
+// v18: a right-handed double helix like B-DNA (front strands rise to the right, the two strands 180° apart).
+// A right-handed helix turns clockwise when seen from BELOW, so the dial is the helix seen from underneath,
+// looking up the time axis from the past. The morph is a real camera tilt from straight below (e = 0, the dial)
+// to slightly below the side (e = 1): circles squash into ellipses, the front stays at the top, nothing folds
+// through the centre. While it tilts, the helix spins so NOW turns to the front, and the work strand opens from
+// its dial lane (same angle) to the opposite side (180°).
+const HX_B = Math.asin(HX.ry / HX.rx), BP_MIN = 1440 / 10.5; // camera elevation below the side view (≈ 8.2°)
+const helixPt = (dt, off = 0, phi = helixPhi) => { const a = ((dt / 1440) * 360 + phi - off) * Math.PI / 180; return [HX.cx + HX.rx * Math.sin(a), HX.cy - HX.ry * Math.cos(a) - (dt / 1440) * HX.pitch, Math.cos(a)]; };
+const wrapPi = (a) => { a = (a + Math.PI) % (2 * Math.PI); if (a < 0) a += 2 * Math.PI; return a - Math.PI; };
+function morphPt(S, dt, off, Rl, e, phi, dtAng = dt) {
+  const baseD = (2 * Math.PI * S.nowMin) / 1440 + Math.PI, baseH = (phi * Math.PI) / 180; // dial: angle = dialF(minute); helix: NOW at the front
+  const th = (2 * Math.PI * dtAng) / 1440 + baseD + e * wrapPi(baseH - baseD) - (e * off * Math.PI) / 180;
+  const beta = -Math.PI / 2 + e * (Math.PI / 2 - HX_B), R = Rl + (HX.rx - Rl) * e, cY = CX + (HX.cy - CX) * e;
+  const yUp = ((HX.pitch * dt) / 1440) * (Math.cos(beta) / Math.cos(HX_B)) - R * Math.cos(th) * Math.sin(beta);
+  return [CX + R * Math.sin(th), cY - yUp, Math.cos(th)];
+}
 const mixHex = (a, b, t) => { const A = hexRgb(a), B = hexRgb(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, '0')).join(''); };
+// v18: one colour function for both views: the real sky at that minute (that day's sun elevation for the place).
+// Life and work share the hue; work is a finer, slightly dimmer strand. k = depth (1 = front / flat dial).
+function sunZoneCol(S, m) {
+  if (S.sun.polar === 'day') return COL.sunB;
+  if (S.sun.polar === 'night') return null;
+  m = wrap(m);
+  if (m < S.rise || m >= S.set) return null;
+  return m < S.mEnd ? COL.yellow : m < S.eStart ? COL.sunB : COL.sunC;
+}
+const WORK_DIM = 0.22;
+function laneCol(S, cat, m, k = 1) {
+  const c = skyAt(kms(S.today) + m * 60000);
+  return cat === 'work' ? mixHex(c, COL.bg, WORK_DIM) : c;
+}
 function strandCol(f) { // palette gradient along the helix, 0 = now → 1 = top
   const g = RINGS.wheel.c ? [RINGS.wheel.a, RINGS.wheel.b, RINGS.wheel.c] : [RINGS.wheel.a, RINGS.wheel.b];
   const x = clamp(f, 0, 1) * (g.length - 1), i = Math.min(g.length - 2, Math.floor(x));
   return mixHex(g[i], g[i + 1], x - i);
 }
-function helixSVG(S, D, phi = 0) {
+function helixSVG(S, D, phi = 0, mt = 1) {
   const { cx, cy, rx, ry, pitch } = HX, items = [], OFF = { life: 0, work: 180 };
-  const P = (dt, off = 0) => { const a = ((dt / 1440) * 360 + phi + off) * Math.PI / 180; return [cx + rx * Math.sin(a), cy + ry * Math.cos(a) - (dt / 1440) * pitch, Math.cos(a)]; };
+  const MORPH = mt < 0.9999, e = clamp(mt, 0, 1), lerp = (a, b) => a + (b - a) * e;
+  const PH = (dt, off = 0) => helixPt(dt, off, phi);
+  // during the morph the camera tilts: each lane circle on the dial lifts into its strand (same minute, same lane)
+  const P = !MORPH ? PH : (dt, off = 0) => morphPt(S, dt, off, D + (off === 180 ? LANE.work : 0), e, phi);
+  const decoOp = MORPH ? clamp((e - 0.15) / 0.85, 0, 1) : 1, strandOp = MORPH ? clamp(e / 0.7, 0, 1) : 1;
   const dayAt = (dt) => { const m = wrap(S.nowMin + dt); return S.sun.polar === 'day' || (S.sun.polar === null && m >= S.rise && m < S.set); };
   const depth = (dt, z) => { const k = (1 + z) / 2, far = Math.max(0, dt) / HX.ahead; return { k, fade: dt < 0 ? 0.35 + 0.65 * (1 + dt / HX.past) * 0.5 : 1 - 0.55 * far }; };
   const f1 = (v) => v.toFixed(1);
   const BG = mixHex(COL.bg, COL.work, 0.05);
-  const seg = (dt0, dt1, off, col, wAdd, opMul, attrs = '') => {
+  const seg = (dt0, dt1, off, col, wAdd, opMul, attrs = '', wMul = 1) => {
     const [x0, y0, z0] = P(dt0, off), [x1, y1, z1] = P(dt1, off), z = (z0 + z1) / 2, { k, fade } = depth(dt0, z);
-    const c = typeof col === 'function' ? col(k) : col, o2 = clamp((0.22 + 0.78 * k) * fade * opMul, 0, 1);
-    const L = `x1="${f1(x0)}" y1="${f1(y0)}" x2="${f1(x1)}" y2="${f1(y1)}"`;
-    if (wAdd) { items.push({ z: z + 0.002, svg: `<line ${attrs} ${L} stroke="${c}" stroke-width="${((1.4 + 4.6 * k) * (0.6 + 0.4 * fade) + wAdd * 0.7).toFixed(1)}" stroke-linecap="round" opacity="${o2.toFixed(2)}"/>` }); return; }
+    const c = typeof col === 'function' ? col(k) : col, o2 = clamp((0.36 + 0.64 * k) * fade * opMul, 0, 1);
+    const L = `x1="${f1(x0)}" y1="${f1(y0)}" x2="${f1(x1)}" y2="${f1(y1)}"` + (MORPH ? ` opacity="${(strandOp * (wAdd ? 1 : 1)).toFixed(3)}"` : '');
+    if (wAdd) { items.push({ z: z + 0.002, svg: `<line ${attrs} ${L} stroke="${c}" stroke-width="${((1.4 + 4.6 * k) * (0.6 + 0.4 * fade) + wAdd * 0.7).toFixed(1)}" stroke-linecap="round" stroke-opacity="${o2.toFixed(2)}"/>` }); return; }
     // strands are opaque (colour mixed toward the sky) so the joints never show as beads; the front gets a soft halo
-    const w = (1.4 + 4.6 * k) * (0.6 + 0.4 * fade);
-    if (k > 0.5) items.push({ z: z - 0.001, svg: `<line ${L} stroke="${c}" stroke-width="${(w * 3.2).toFixed(1)}" stroke-linecap="butt" opacity="${(o2 * 0.09).toFixed(3)}" pointer-events="none"/>` });
+    const w = (1.4 + 4.6 * k) * (0.6 + 0.4 * fade) * wMul;
+    if (k > 0.5) items.push({ z: z - 0.001, svg: `<line ${L} stroke="${c}" stroke-width="${(w * 3.2).toFixed(1)}" stroke-linecap="butt" stroke-opacity="${(o2 * 0.09).toFixed(3)}" pointer-events="none"/>` });
     items.push({ z, svg: `<line ${attrs} ${L} stroke="${mixHex(BG, c, o2)}" stroke-width="${w.toFixed(2)}" stroke-linecap="round"/>` });
   };
   // the two strands: LIFE and WORK, the same timeline half a turn apart; front is brighter, daylight a touch stronger
-  const strands = [['life', COL.lifeA, COL.life], ['work', COL.workA, COL.work]];
   for (let dt = -HX.past; dt < HX.ahead; dt += HX.seg) {
-    const day = dayAt(dt + HX.seg / 2) ? 1 : 0.72;
-    strands.forEach(([cat, a, b]) => seg(dt, dt + HX.seg, OFF[cat], (k) => mixHex(a, b, 0.3 + 0.7 * k), 0, day));
+    const mid = S.nowMin + dt + HX.seg / 2;
+    ['life', 'work'].forEach((cat) => seg(dt, dt + HX.seg, OFF[cat], (k) => laneCol(S, cat, mid, k), 0, 1, '', cat === 'work' ? 0.58 : 1));
+  }
+  // v18: base-pair rungs 10.5 per turn (like B-DNA, one every ~137 min) between the two strands (the DNA ladder), in that hour's sky colour
+  for (let dt = Math.ceil((-HX.past + S.nowMin) / BP_MIN) * BP_MIN - S.nowMin; dt < HX.ahead; dt += BP_MIN) {
+    const [x0, y0, z0] = P(dt, 0), [x1, y1, z1] = P(dt, 180), z = Math.min(z0, z1), { fade } = depth(dt, 0), kk = (1 + Math.max(z0, z1)) / 2;
+    items.push({ z: z - 0.004, svg: `<line class="bp" x1="${f1(x0)}" y1="${f1(y0)}" x2="${f1(x1)}" y2="${f1(y1)}" stroke="${laneCol(S, 'life', S.nowMin + dt)}" stroke-width="${(0.8 + 0.7 * kk).toFixed(2)}" stroke-linecap="round" opacity="${((0.12 + 0.22 * kk) * fade * strandOp).toFixed(3)}" pointer-events="none"/>` });
   }
   // satisfying-work blocks glow on the work strand (tap = log focus); chore durations glow on their own strand
   const clip = (a, b) => [Math.max(a, -HX.past), Math.min(b, HX.ahead)];
-  const band = (dtA, dtB, cat, op, attrs) => { const [a, b] = clip(dtA, dtB); for (let dt = a; dt < b; dt += HX.seg) seg(dt, Math.min(b, dt + HX.seg), OFF[cat], COL[cat], 7, op, attrs); };
-  for (let d = -1; d <= 3; d++) workBlocksOn(S, addDays(S.today, d)).forEach(({ t0, len }) => { if (len > 0) { const a = (t0 - S.now) / 60000; band(a, a + len, 'work', 0.32, 'pointer-events="none"'); } });
+  const band = (dtA, dtB, cat, op, attrs) => { const [a, b] = clip(dtA, dtB); for (let dt = a; dt < b; dt += HX.seg) seg(dt, Math.min(b, dt + HX.seg), OFF[cat], laneCol(S, 'life', S.nowMin + dt + 7), 7, op, attrs); };
+  for (let d = -1; d <= 3; d++) workBlocksOn(S, addDays(S.today, d)).forEach(({ t0, len }) => { if (len > 0) { const a = (t0 - S.now) / 60000; band(a, a + len, 'work', 0.32, 'class="wb" pointer-events="none"'); } });
   const occ = choreOcc(S, 3).filter((o) => o.dt >= -HX.past && o.dt <= HX.ahead);
   occ.forEach((o) => { if (o.len > 0 && o.cat !== 'both') band(o.dt, o.dt + o.len, o.cat, 0.2, 'pointer-events="none"'); });
   // sunrise / sunset: small beads on both strands
   if (S.sun.polar === null) {
-    for (let d = -1; d <= 3; d++) [[S.rise, COL.sunB], [S.set, COL.sunC]].forEach(([m, col]) => {
-      const dt = m - S.nowMin + d * 1440; if (dt < -HX.past || dt > HX.ahead) return;
-      [0, 180].forEach((off) => { const [x0, y0, z0] = P(dt, off), { fade } = depth(dt, z0); items.push({ z: z0 + 0.003, svg: `<circle cx="${f1(x0)}" cy="${f1(y0)}" r="${(1.6 + 2.2 * (1 + z0) / 2).toFixed(1)}" fill="${col}" opacity="${(0.65 * fade).toFixed(2)}"/>` }); });
+    for (let d = -1; d <= 3; d++) [[S.rise], [S.set]].forEach(([m]) => {
+      const dt = m - S.nowMin + d * 1440, col = mixHex(laneCol(S, 'life', m + d * 1440), '#ffffff', 0.25); if (dt < -HX.past || dt > HX.ahead) return;
+      [0, 180].forEach((off) => { const [x0, y0, z0] = P(dt, off), { fade } = depth(dt, z0); items.push({ z: z0 + 0.003, svg: `<circle cx="${f1(x0)}" cy="${f1(y0)}" r="${(1.6 + 2.2 * (1 + z0) / 2).toFixed(1)}" fill="${col}" opacity="${(0.65 * fade * decoOp).toFixed(2)}"/>` }); });
     });
   }
   // day labels (hidden in Quiet mode)
   for (let d = 0; d <= 3; d++) {
     const dtNoon = (kms(addDays(S.today, d)) - S.now) / 60000 + 720; if (dtNoon > HX.ahead + 360) continue;
     const y = cy - (Math.max(dtNoon, 0) / 1440) * pitch, k = addDays(S.today, d);
-    items.push({ z: -5, svg: `<text class="ql" x="${cx - rx - 12}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="${d === 0 ? 12 : 11}" font-weight="${d === 0 ? 700 : 600}" fill="${d === 0 ? COL.yellow : '#B9B3D6'}" opacity="${(1 - 0.17 * d).toFixed(2)}">${d === 0 ? 'Today' : WD_SHORT[wdOf(k)]}</text>` });
+    items.push({ z: -5, svg: `<text class="ql" x="${cx - rx - 12}" y="${(y + 4).toFixed(1)}" text-anchor="end" font-size="${d === 0 ? 12 : 11}" font-weight="${d === 0 ? 700 : 600}" fill="${d === 0 ? COL.yellow : '#B9B3D6'}" opacity="${((1 - 0.17 * d) * decoOp).toFixed(2)}">${d === 0 ? 'Today' : WD_SHORT[wdOf(k)]}</text>` });
   }
   // chores: life on the life strand, work on the work strand; "both" = a glowing rung bridging them, icon in the middle
   const soon = occ.filter((o) => o.dt >= 0 && !o.done).sort((a, b) => a.dt - b.dt).slice(0, 2).map((o) => o.id + o.k), nextKey = soon[0] || '';
+  const nxD = MORPH ? choreOcc(S).filter((o) => o.k === S.today && o.id !== 'teeth' && o.dt >= 0 && !o.done).sort((a, b) => a.t - b.t)[0] : null, nextDial = nxD ? nxD.id + nxD.k : '';
   const inTxt = (m) => (m < 60 ? Math.round(m) + 'm' : Math.floor(m / 60) + 'h' + (Math.round(m % 60) ? ' ' + Math.round(m % 60) + 'm' : ''));
   let gi = 0;
-  occ.forEach((o) => {
-    const past = o.dt < 0;
+  const DB = MORPH ? dialBeads(S, D) : null, seen = new Set();
+  const list = MORPH ? occ.concat([...DB.values()].map((b) => b.o).filter((o) => !occ.some((q) => q.id === o.id && q.k === o.k))) : occ;
+  list.forEach((o) => {
+    const past = o.dt < 0, key = o.id + o.k, onHelix = !MORPH || (o.dt >= -HX.past && o.dt <= HX.ahead), db = DB && DB.get(key);
     let x, y, z;
     if (o.cat === 'both') {
       const [x0, y0, z0] = P(o.dt, 0), [x1, y1, z1] = P(o.dt, 180), { fade } = depth(o.dt, 0), id = `rg${gi++}`;
-      x = (x0 + x1) / 2; y = (y0 + y1) / 2; z = 0.0;
-      const op = past ? (o.done ? 0.25 : 0.4) : 0.45 + 0.5 * fade;
-      items.push({ z: -0.01, svg: `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f1(x0)}" y1="${f1(y0)}" x2="${f1(x1)}" y2="${f1(y1)}"><stop offset="0" stop-color="${COL.life}" stop-opacity=".8"/><stop offset=".32" stop-color="${COL.life}" stop-opacity=".08"/><stop offset=".5" stop-color="#fff" stop-opacity=".22"/><stop offset=".68" stop-color="${COL.work}" stop-opacity=".08"/><stop offset="1" stop-color="${COL.work}" stop-opacity=".8"/></linearGradient><line class="rung" x1="${f1(x0)}" y1="${f1(y0)}" x2="${f1(x1)}" y2="${f1(y1)}" stroke="url(#${id})" stroke-width="${(1.2 + 1.6 * fade).toFixed(1)}" stroke-linecap="round" opacity="${(op * 0.8).toFixed(2)}" pointer-events="none"/>` });
-    } else { [x, y, z] = P(o.dt, OFF[o.cat]); }
+      if (MORPH) { const [a0, b0] = PH(o.dt, 0), [a1, b1] = PH(o.dt, 180); x = (a0 + a1) / 2; y = (b0 + b1) / 2; } else { x = (x0 + x1) / 2; y = (y0 + y1) / 2; } z = 0.0;
+      const op = (past ? (o.done ? 0.25 : 0.4) : 0.45 + 0.5 * fade) * (MORPH ? strandOp : 1);
+      items.push({ z: -0.01, svg: `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f1(x0)}" y1="${f1(y0)}" x2="${f1(x1)}" y2="${f1(y1)}"><stop offset="0" stop-color="${skyInk(o.t)}" stop-opacity=".85"/><stop offset=".32" stop-color="${skyInk(o.t)}" stop-opacity=".12"/><stop offset=".5" stop-color="#fff" stop-opacity=".22"/><stop offset=".68" stop-color="${skyInk(o.t)}" stop-opacity=".12"/><stop offset="1" stop-color="${skyInk(o.t)}" stop-opacity=".85"/></linearGradient><line class="rung" x1="${f1(x0)}" y1="${f1(y0)}" x2="${f1(x1)}" y2="${f1(y1)}" stroke="url(#${id})" stroke-width="${(1.2 + 1.6 * fade).toFixed(1)}" stroke-linecap="round" opacity="${(op * 0.8).toFixed(2)}" pointer-events="none"/>` });
+    } else { [x, y, z] = PH(o.dt, OFF[o.cat]); }
     // depth: back of the spiral ≈ 0.6× and 40 % (slightly blurred), front ≈ 1.15× and full; far future fades a little
     const k = (1 + z) / 2, far = Math.max(0, o.dt) / HX.ahead, isNext = o.id + o.k === nextKey;
     const sc = (0.6 + 0.55 * k) * (1 - 0.3 * far);
     let op = (0.4 + 0.6 * k) * (1 - 0.35 * far);
     if (past) op *= o.overdue ? 0.95 : o.done ? 0.85 : 0.55;
     if (isNext) op = Math.max(op, 0.75);
-    const blur = k < 0.34 && !isNext ? ' filter="url(#orb-blur)"' : '';
-    items.push({ z: z + 0.004, svg: `<g transform="translate(${f1(x)} ${f1(y)}) scale(${sc.toFixed(3)})" opacity="${op.toFixed(2)}"${blur}>${orbSVG(o, 16, '', { k, next: isNext, live: !past && o.dt < 1440 && k > 0.3 })}</g>` });
+    if (!MORPH) { items.push({ z: z + 0.004, svg: `<g class="hb" data-key="${key}" transform="translate(${f1(x)} ${f1(y)}) scale(${sc.toFixed(3)})" opacity="${op.toFixed(2)}">${orbSVG(o, 16, '', { k, next: isNext })}</g>` }); return; }
+    // morph: from the dial bead (r 13, full opacity, front-lit) to the helix bead; strokes stay the same width on screen
+    const dtA = lerp(db ? db.m - S.nowMin + (kms(o.k) - kms(S.today)) / 60000 : o.dt, o.dt), d13 = 13 / 16;
+    let mx, my;
+    if (o.cat === 'both') { const A = morphPt(S, o.dt, 0, D, e, phi, dtA), B = morphPt(S, o.dt, 180, D + LANE.work, e, phi, dtA); mx = (A[0] + B[0]) / 2; my = (A[1] + B[1]) / 2; }
+    else [mx, my] = morphPt(S, o.dt, OFF[o.cat], D + LANE[o.cat], e, phi, dtA);
+    const scM = lerp(d13, sc), kM = lerp(1, k), presence = db && onHelix ? 1 : db ? 1 - e : e;
+    const opM = lerp(1, op) * presence, sw = lerp(1 / d13, 1);
+    items.push({ z: lerp(0.5, z + 0.004), svg: `<g class="hb" data-key="${key}" transform="translate(${f1(mx)} ${f1(my)}) scale(${scM.toFixed(3)})" opacity="${opM.toFixed(3)}">${orbSVG(o, 16, '', { k: kM, next: e > 0.5 ? isNext : nextDial === key, sw })}</g>` });
   });
   // a faint vertical light core, and motes drifting up both strands
   { const top = cy - ry - (HX.ahead / 1440) * pitch - 10, bot = cy + ry + 6;
-    items.push({ z: -0.02, svg: `<defs><linearGradient id="hx-core" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${COL.yellow}" stop-opacity=".0"/><stop offset=".12" stop-color="${COL.yellow}" stop-opacity=".22"/><stop offset=".55" stop-color="${COL.work}" stop-opacity=".12"/><stop offset="1" stop-color="${COL.work}" stop-opacity="0"/></linearGradient><linearGradient id="hx-coreW" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".055"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect x="${cx - 30}" y="${f1(top)}" width="60" height="${f1(bot - top)}" fill="url(#hx-coreW)" pointer-events="none"/><rect x="${cx - 0.6}" y="${f1(top)}" width="1.2" height="${f1(bot - top)}" fill="url(#hx-core)" pointer-events="none"/>` });
-    if (!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) {
-      const path = (off) => { let d = ''; for (let dt = -60; dt <= HX.ahead; dt += 40) { const [x, y] = P(dt, off); d += (d ? 'L' : 'M') + f1(x) + ' ' + f1(y); } return d; };
-      const now = Date.now() / 1000; let m = '';
-      [[0, COL.life], [180, COL.work]].forEach(([off, col], si) => {
-        const d = path(off);
-        for (let i = 0; i < 6; i++) { const dur = 34 + ((i * 7 + si * 3) % 11), b = -((now + i * dur / 6 + si * 5) % dur); m += `<circle r="${(1 + (i % 3) * 0.45).toFixed(2)}" fill="${mixHex(col, '#ffffff', 0.5)}" opacity="0"><animateMotion dur="${dur}s" begin="${b.toFixed(2)}s" repeatCount="indefinite" path="${d}"/><animate attributeName="opacity" values="0;.85;.6;0" keyTimes="0;.15;.8;1" dur="${dur}s" begin="${b.toFixed(2)}s" repeatCount="indefinite"/></circle>`; }
-      });
-      items.push({ z: 0.95, svg: `<g class="motes" pointer-events="none">${m}</g>` });
-    }
+    items.push({ z: -0.02, svg: `<defs><linearGradient id="hx-core" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${COL.yellow}" stop-opacity=".0"/><stop offset=".12" stop-color="${skyInk(S.now)}" stop-opacity=".22"/><stop offset=".55" stop-color="${skyInk(S.now)}" stop-opacity=".1"/><stop offset="1" stop-color="${skyInk(S.now)}" stop-opacity="0"/></linearGradient><linearGradient id="hx-coreW" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".055"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><g opacity="${decoOp.toFixed(3)}"><rect x="${cx - 30}" y="${f1(top)}" width="60" height="${f1(bot - top)}" fill="url(#hx-coreW)" pointer-events="none"/><rect x="${cx - 0.6}" y="${f1(top)}" width="1.2" height="${f1(bot - top)}" fill="url(#hx-core)" pointer-events="none"/></g>` });
   }
   // NOW: a bright rung across both strands, the sun bead on life, a small bead on work
-  const [lx, ly, lz] = P(0, 0), [wx, wy, wz] = P(0, 180);
-  items.push({ z: Math.max(lz, wz) + 0.5, svg: `<g class="tap" data-ring="sun"><line x1="${f1(lx)}" y1="${f1(ly)}" x2="${f1(wx)}" y2="${f1(wy)}" stroke="${COL.yellow}" stroke-width="2.5" stroke-linecap="round" opacity=".55" filter="url(#now-glow)"/><circle cx="${f1(wx)}" cy="${f1(wy)}" r="5" fill="${COL.work}" stroke="${COL.bg}" stroke-width="1.5"/><circle cx="${f1(lx)}" cy="${f1(ly)}" r="20" fill="${COL.yellow}" opacity=".35" filter="url(#now-glow)" class="breathe"/><circle cx="${f1(lx)}" cy="${f1(ly)}" r="9.5" fill="${shade(COL.yellow, 1.2)}" stroke="${COL.bg}" stroke-width="2"/><text class="ql" x="${f1(lx)}" y="${(ly + 30).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" letter-spacing=".1em" fill="${COL.yellow}">NOW</text></g>` });
-  items.push({ z: -9, svg: `<text class="ql" x="${cx}" y="${(cy - ry - 3 * pitch - 18).toFixed(1)}" text-anchor="middle" font-size="9.5" letter-spacing=".12em" fill="#8e8e93" opacity=".75">↑ LATER · <tspan fill="${COL.life}">LIFE</tspan> ⟷ <tspan fill="${COL.work}">WORK</tspan> · ONE TURN = ONE DAY</text>` });
+  const [lx, ly, lz] = P(0, 0), [wx, wy, wz] = P(0, 180), nowC = skyInk(S.now);
+  items.push({ z: Math.max(lz, wz) + 0.5, svg: `<g class="tap" data-ring="sun"${MORPH ? ` opacity="${decoOp.toFixed(3)}"` : ''}><line x1="${f1(lx)}" y1="${f1(ly)}" x2="${f1(wx)}" y2="${f1(wy)}" stroke="${nowC}" stroke-width="2.5" stroke-linecap="round" opacity=".55" filter="url(#now-glow)"/><circle cx="${f1(wx)}" cy="${f1(wy)}" r="5" fill="${mixHex(nowC, COL.bg, WORK_DIM)}" stroke="${COL.bg}" stroke-width="1.5"/><circle cx="${f1(lx)}" cy="${f1(ly)}" r="20" fill="${nowC}" opacity=".3" filter="url(#now-glow)"/><circle cx="${f1(lx)}" cy="${f1(ly)}" r="9.5" fill="${mixHex(nowC, '#ffffff', 0.45)}" stroke="${COL.bg}" stroke-width="2"/><text class="ql" x="${f1(lx)}" y="${(ly + 30).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" letter-spacing=".1em" fill="${COL.yellow}">NOW</text></g>` });
+  items.push({ z: -9, svg: `<text class="ql" x="${cx}" y="${(cy - ry - 3 * pitch - 18).toFixed(1)}" text-anchor="middle" font-size="9.5" letter-spacing=".12em" fill="#8e8e93" opacity="${(0.75 * decoOp).toFixed(2)}">↑ LATER · <tspan fill="${COL.life}">LIFE</tspan> ⟷ <tspan fill="${COL.work}">WORK</tspan> · ONE TURN = ONE DAY</text>` });
   const body = orbDefs() + items.sort((a, b) => a.z - b.z).map((i) => i.svg).join('');
-  if (Math.abs(helixZoom - 1) < 0.01) return body;
-  return `<defs><clipPath id="now-hclip"><circle cx="${CX}" cy="${CX}" r="252"/></clipPath></defs><g clip-path="url(#now-hclip)"><g transform="translate(${HX.cx} ${HX.cy}) scale(${helixZoom.toFixed(3)}) translate(${-HX.cx} ${-HX.cy})">${body}</g></g>`;
+  const zm = 1 + (helixZoom - 1) * e;
+  if (Math.abs(zm - 1) < 0.01) return body;
+  return `<defs><clipPath id="now-hclip"><circle cx="${CX}" cy="${CX}" r="252"/></clipPath></defs><g clip-path="url(#now-hclip)"><g transform="translate(${HX.cx} ${HX.cy}) scale(${zm.toFixed(3)}) translate(${-HX.cx} ${-HX.cy})">${body}</g></g>`;
+}
+
+// ===================== HELIX ⇄ DIAL MORPH =====================
+// One continuous eased morph (~620 ms): strands unwind onto the dial lanes, every bead travels between its
+// helix and dial positions (keyed by chore + day), the rings never move. Reversible mid-flight. Reduced motion: a short fade.
+const MORPH_MS = 620;
+let morph = null; // { from, to, t0, e }
+const easeIO = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+function morphFace(on) {
+  const f = $('#nowFace'), og = $('#now-orbit'), dg = $('#now-dialg');
+  if (!f || !og || !dg || tab !== 'now') { if (f) f.classList.toggle('orbit-on', on); tick(); return; }
+  const reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) { f.classList.add('fade-sw'); f.classList.toggle('orbit-on', on); og.dataset.k = ''; tick(); setTimeout(() => f.classList.remove('fade-sw'), 220); return; }
+  const from = morph ? morph.e : on ? 0 : 1;
+  morph = { from, to: on ? 1 : 0, t0: performance.now(), e: from, dur: MORPH_MS * Math.abs((on ? 1 : 0) - from) || 1 };
+  f.classList.add('morphing'); f.classList.toggle('orbit-on', on);
+  const S = compute(Date.now()), D = ringLayout(RING_ORDER).dial;
+  const frame = (now) => {
+    if (!morph) return;
+    const t = Math.min(1, (now - morph.t0) / morph.dur), e = morph.from + (morph.to - morph.from) * easeIO(t);
+    morph.e = e;
+    og.innerHTML = helixSVG(S, D, helixPhi, e);
+    dg.style.opacity = Math.max(0, 1 - e * 1.6).toFixed(3);
+    if (t < 1) { morph.raf = requestAnimationFrame(frame); return; }
+    morph = null; f.classList.remove('morphing'); dg.style.opacity = '';
+    og.dataset.k = ''; if (!on) og.innerHTML = '';
+    tick();
+  };
+  if (morph.prevRaf) cancelAnimationFrame(morph.prevRaf);
+  cancelAnimationFrame(window.__morphRaf || 0);
+  morph.raf = window.__morphRaf = requestAnimationFrame(frame);
+  // frame 0 synchronously so there is never an empty paint
+  frame(morph.t0);
 }
 
 // ===================== RING FACE (shared by Now and Cosmos) =====================
@@ -738,10 +898,33 @@ function arcD(r, m0, m1) {
 }
 function ringLayout(order) { // v13: thin luminous rings, close together at the rim, lots of room inside
   const n = order.length, outer = 288, inner = 150;
-  const step = n > 1 ? Math.min(15, (outer - inner) / (n - 1)) : 0;
+  const step = n > 1 ? Math.min(order === RING_ORDER ? 20 : 15, (outer - inner) / (n - 1)) : 0;
   return { radii: order.map((_, i) => outer - i * step), sw: 3, dial: Math.max(70, outer - (n - 1) * step - 46) };
 }
-const RING_TICKS = { year: [12, 3], moon: [8, 2], wheel: [24, 6], breath: [12, 3], life: [10, 5], turn: [10, 5], focus: [12, 3] };
+// v16 · a real orrery: the face is centred on Sagittarius A*. Outer orbit = the Sun around the galactic centre
+// (one galactic year ≈ 230 My, BASE.W anchor; effectively static), then Earth around the Sun (year progress from
+// 1 Jan, as the old Sun ring), then the Moon around Earth (synodic month from NEW_MOON_REF). Orbits stay concentric
+// so the dial/helix keeps its place and the morph never moves them; each body carries a tiny epicycle showing its
+// child (Earth beside the Sun, the Moon beside Earth), which is the nesting cue.
+const CEL = { wheel: { a: '#3A2594', b: '#B9A2FF', body: 'sun' }, year: { a: '#145C82', b: '#7FE6FF', body: 'earth' }, moon: { a: '#5D5980', b: '#E7E2F1', body: 'moon' } };
+const celOn = (p, id) => p === 'now' && !!CEL[id];
+const ringDef = (p, id, defs) => (celOn(p, id) ? { ...defs[id], a: CEL[id].a, b: CEL[id].b, c: null } : defs[id]);
+const epi = (r, f) => [r * Math.sin(2 * Math.PI * f), -r * Math.cos(2 * Math.PI * f)];
+function celDefs() {
+  return `<radialGradient id="cel-sun" cx=".38" cy=".34" r=".7"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#FFF1D6"/><stop offset="1" stop-color="#F2C48C"/></radialGradient>`
+    + `<radialGradient id="cel-sunglow"><stop offset=".2" stop-color="#FFE7C2" stop-opacity=".55"/><stop offset=".55" stop-color="#FFD9A8" stop-opacity=".16"/><stop offset="1" stop-color="#FFD9A8" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="cel-earth" cx=".36" cy=".32" r=".72"><stop offset="0" stop-color="#D2F8FF"/><stop offset=".42" stop-color="#3EC6E8"/><stop offset="1" stop-color="#0D4F7A"/></radialGradient>`
+    + `<radialGradient id="cel-earthglow"><stop offset=".25" stop-color="#5FD4F5" stop-opacity=".4"/><stop offset="1" stop-color="#5FD4F5" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="cel-moonglow"><stop offset=".3" stop-color="#EDE7F7" stop-opacity=".34"/><stop offset="1" stop-color="#EDE7F7" stop-opacity="0"/></radialGradient>`
+    + `<radialGradient id="cel-sgr"><stop offset="0" stop-color="#000" stop-opacity=".95"/><stop offset=".55" stop-color="#020106" stop-opacity=".9"/><stop offset=".6" stop-color="#2A1A55" stop-opacity=".28"/><stop offset=".66" stop-color="#FFB98A" stop-opacity=".09"/><stop offset=".8" stop-color="#3B2594" stop-opacity=".05"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>`
+    + `<linearGradient id="cel-photon" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD2A6"/><stop offset=".5" stop-color="#B98CFF"/><stop offset="1" stop-color="#5E7CFF"/></linearGradient>`;
+}
+function celBody(p, id) {
+  if (id === 'wheel') return `<circle r="17" fill="url(#cel-sunglow)"/><circle r="11" fill="none" stroke="#7FE6FF" stroke-opacity=".26" stroke-width=".7"/><circle r="5.8" fill="url(#cel-sun)"/><circle id="${p}-epi-earth" r="1.9" fill="#5FD4F5"/>`;
+  if (id === 'year') return `<circle r="12" fill="url(#cel-earthglow)"/><circle r="9" fill="none" stroke="#E7E2F1" stroke-opacity=".24" stroke-width=".6"/><circle r="4.8" fill="url(#cel-earth)"/><circle r="4.8" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width=".5"/><circle id="${p}-epi-moon" r="1.45" fill="#F1ECE4"/>`;
+  return `<circle r="12.5" fill="url(#cel-moonglow)"/><g id="${p}-moonbody"></g>`;
+}
+const RING_TICKS = { year: [12, 3], moon: [8, 2], wheel: [12, 3], breath: [12, 3], life: [10, 5], turn: [10, 5], focus: [12, 3] };
 function stars() {
   let s = '';
   for (let i = 0; i < 70; i++) {
@@ -754,26 +937,32 @@ function faceSVG(p, order, defs, mode) {
   const L = ringLayout(order);
   let g = `<defs>`;
   g += `<radialGradient id="${p}-inner"><stop offset="0" stop-color="${COL.work}" stop-opacity=".05"/><stop offset=".7" stop-color="${COL.accent || COL.work}" stop-opacity=".035"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>`;
-  order.forEach((id) => { const R = defs[id]; g += `<linearGradient id="${p}-g-${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${R.a}"/>${R.c ? `<stop offset="55%" stop-color="${R.b}"/><stop offset="100%" stop-color="${R.c}"/>` : `<stop offset="100%" stop-color="${R.b}"/>`}</linearGradient>`; });
+  if (p === 'now') g += celDefs();
+  order.forEach((id) => { const R = ringDef(p, id, defs); g += `<linearGradient id="${p}-g-${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${R.a}"/>${R.c ? `<stop offset="55%" stop-color="${R.b}"/><stop offset="100%" stop-color="${R.c}"/>` : `<stop offset="100%" stop-color="${R.b}"/>`}</linearGradient>`; });
   g += `<filter id="${p}-aur" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="9"/></filter>`;
   g += `<linearGradient id="${p}-day" gradientUnits="userSpaceOnUse" x1="${CX - L.dial}" y1="${CX}" x2="${CX + L.dial}" y2="${CX}"><stop offset="0%" stop-color="${COL.sunB}"/><stop offset="50%" stop-color="${COL.yellow}"/><stop offset="100%" stop-color="${COL.sunB}"/></linearGradient>`;
   g += `<filter id="${p}-glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
   g += `<filter id="${p}-bloom" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="3.2"/></filter>`;
   g += `<radialGradient id="${p}-hglow"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".25" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient></defs>`;
   g += `<circle cx="${CX}" cy="${CX}" r="${L.radii[L.radii.length - 1] - 10}" fill="url(#${p}-inner)" pointer-events="none"/>`;
+  // Sagittarius A*: the face's centre — a dark core with a faint photon ring, under the dial and the helix
+  if (p === 'now') g += `<g class="sgr" pointer-events="none"><circle cx="${CX}" cy="${CX}" r="76" fill="url(#cel-sgr)"/><circle cx="${CX}" cy="${CX}" r="44" fill="none" stroke="url(#cel-photon)" stroke-width="1" opacity=".42"/><circle cx="${CX}" cy="${CX}" r="47" fill="none" stroke="url(#cel-photon)" stroke-width="4" opacity=".07"/></g>`;
   order.forEach((id, i) => {
-    const R = defs[id], r = L.radii[i], C = 2 * Math.PI * r, [nT, maj] = RING_TICKS[id] || [12, 3];
+    const R = ringDef(p, id, defs), cel = celOn(p, id), r = L.radii[i], C = 2 * Math.PI * r, [nT, maj] = RING_TICKS[id] || [12, 3];
     g += `<g id="${p}-wrap-${id}" class="ring tap" data-ring="${id}">`;
     g += `<circle cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="transparent" stroke-width="13" pointer-events="stroke"/>`;
-    g += `<circle cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="${R.b}" stroke-opacity="0.13" stroke-width="1.1" pointer-events="none"/>`;
+    g += `<circle cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="${R.b}" stroke-opacity="${cel ? 0.17 : 0.13}" stroke-width="${cel ? 0.9 : 1.1}" pointer-events="none"/>`;
     let tk = '';
     for (let t = 0; t < nT; t++) { const big = t % maj === 0, [x0, y0] = pt(r - (big ? 4 : 2.5), t / nT), [x1, y1] = pt(r + (big ? 4 : 2.5), t / nT); tk += `M${x0.toFixed(1)} ${y0.toFixed(1)}L${x1.toFixed(1)} ${y1.toFixed(1)}`; }
-    g += `<path d="${tk}" stroke="${R.b}" stroke-opacity=".32" stroke-width=".9" stroke-linecap="round" pointer-events="none"/>`;
-    g += `<circle id="${p}-rb-${id}" cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="url(#${p}-g-${id})" stroke-width="7" stroke-linecap="round" stroke-dasharray="0.01 ${C}" transform="rotate(-90 ${CX} ${CX})" filter="url(#${p}-bloom)" opacity=".55" pointer-events="none"/>`;
+    g += `<path d="${tk}" stroke="${R.b}" stroke-opacity="${cel ? 0.2 : 0.32}" stroke-width=".9" stroke-linecap="round" pointer-events="none"/>`;
+    if (cel) g += `<g opacity=".5" pointer-events="none">`; // faint progress trail
+    g += `<circle id="${p}-rb-${id}" cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="url(#${p}-g-${id})" stroke-width="7" stroke-linecap="round" stroke-dasharray="0.01 ${C}" transform="rotate(-90 ${CX} ${CX})" opacity=".2" pointer-events="none"/>`;
     if (false) g += `<circle id="${p}-ra-${id}" class="ring aur" cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="url(#${p}-g-${id})" stroke-width="${L.sw + 6}" stroke-linecap="round" stroke-dasharray="0.01 ${C}" transform="rotate(-90 ${CX} ${CX})" filter="url(#${p}-aur)" opacity="0.55" pointer-events="none"/>`;
-    g += `<circle id="${p}-r-${id}" class="ring" cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="url(#${p}-g-${id})" stroke-width="2.6" stroke-linecap="round" stroke-dasharray="0.01 ${C}" transform="rotate(-90 ${CX} ${CX})" pointer-events="none"/>`;
-    if (id !== 'moon') g += `<g id="${p}-hd-${id}" pointer-events="none"><circle r="10" fill="url(#${p}-hglow)" opacity=".55"/><circle r="9" fill="${R.b}" opacity=".22"/><circle r="2.8" fill="#fff"/></g>`;
-    g += `<text id="${p}-t-${id}" class="${p === 'now' ? 'ql' : ''}" x="${CX + 8}" y="${CX - r - 6}" font-size="9" font-weight="700" letter-spacing="0.14em" fill="${R.b}" opacity=".8">${R.name}</text></g>`;
+    g += `<circle id="${p}-r-${id}" class="ring" cx="${CX}" cy="${CX}" r="${r}" fill="none" stroke="url(#${p}-g-${id})" stroke-width="${cel ? 1.5 : 2.6}" stroke-linecap="round" stroke-dasharray="0.01 ${C}" transform="rotate(-90 ${CX} ${CX})" pointer-events="none"/>`;
+    if (cel) { g += `</g><g id="${p}-hd-${id}" class="body body-${CEL[id].body}">${celBody(p, id)}</g>`; }
+    else if (id !== 'moon') g += `<g id="${p}-hd-${id}" pointer-events="none"><circle r="10" fill="url(#${p}-hglow)" opacity=".55"/><circle r="9" fill="${R.b}" opacity=".22"/><circle r="2.8" fill="#fff"/></g>`;
+    if (!cel) g += `<text id="${p}-t-${id}" class="${p === 'now' ? 'ql' : ''}" x="${CX + 8}" y="${CX - r - 6}" font-size="9" font-weight="700" letter-spacing="0.14em" fill="${R.b}" opacity=".8">${R.name}</text>`;
+    g += `</g>`;
   });
   g += `<g id="${p}-dots"></g><g id="${p}-moon"></g>`;
   const D = L.dial;
@@ -782,10 +971,10 @@ function faceSVG(p, order, defs, mode) {
   g += `<circle cx="${CX}" cy="${CX}" r="${D}" fill="none" stroke="${RINGS.moon.b}" stroke-opacity="0.12" stroke-width="1.1" pointer-events="none"/>`;
   { let tk = ''; for (let h = 0; h < 24; h++) { const big = h % 6 === 0, [x0, y0] = pt(D + 7, h / 24), [x1, y1] = pt(D + (big ? 13 : 10), h / 24); tk += `M${x0.toFixed(1)} ${y0.toFixed(1)}L${x1.toFixed(1)} ${y1.toFixed(1)}`; } g += `<path d="${tk}" stroke="#fff" stroke-opacity=".16" stroke-width=".9" stroke-linecap="round" pointer-events="none"/>`; }
   g += mode === 'zones'
-    ? `<g filter="url(#${p}-bloom)" opacity=".6" pointer-events="none"><path id="${p}-z1b" fill="none" stroke="${COL.yellow}" stroke-width="7" stroke-linecap="round"/><path id="${p}-z2b" fill="none" stroke="${COL.sunB}" stroke-width="7"/><path id="${p}-z3b" fill="none" stroke="${COL.sunC}" stroke-width="7" stroke-linecap="round"/></g><path id="${p}-z1" fill="none" stroke="${COL.yellow}" stroke-width="2.6" stroke-linecap="round"/><path id="${p}-z2" fill="none" stroke="${COL.sunB}" stroke-width="2.6"/><path id="${p}-z3" fill="none" stroke="${COL.sunC}" stroke-width="2.6" stroke-linecap="round"/><line id="${p}-stop" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`
+    ? `<g opacity=".22" pointer-events="none"><path id="${p}-z1b" fill="none" stroke="${COL.yellow}" stroke-width="7" stroke-linecap="round"/><path id="${p}-z2b" fill="none" stroke="${COL.sunB}" stroke-width="7"/><path id="${p}-z3b" fill="none" stroke="${COL.sunC}" stroke-width="7" stroke-linecap="round"/></g><path id="${p}-z1" fill="none" stroke="${COL.yellow}" stroke-width="2.6" stroke-linecap="round"/><path id="${p}-z2" fill="none" stroke="${COL.sunB}" stroke-width="2.6"/><path id="${p}-z3" fill="none" stroke="${COL.sunC}" stroke-width="2.6" stroke-linecap="round"/><line id="${p}-stop" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`
     : `<path id="${p}-day" fill="none" stroke="url(#${p}-day)" stroke-width="3" stroke-linecap="round"/><text id="${p}-rise" font-size="11" fill="${COL.sunB}"></text><text id="${p}-set" font-size="11" fill="${COL.sunB}" text-anchor="end"></text>`;
   [0, 6, 12, 18].forEach((h) => { const [x, y] = pt(D - 56, dialF(h * 60)); g += `<text class="${p === 'now' ? 'ql' : ''}" x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="middle" font-size="10" fill="#636366">${String(h).padStart(2, '0')}</text>`; });
-  g += `<g id="${p}-sun" class="rot" style="transform-origin:${CX}px ${CX}px"><circle class="breathe" cx="${CX}" cy="${CX - D}" r="16" opacity="0.4" filter="url(#${p}-glow)"/><circle cx="${CX}" cy="${CX - D}" r="5.5" stroke="#fff" stroke-opacity=".7" stroke-width="1.2"/></g>`;
+  g += `<g id="${p}-sun" class="rot" style="transform-origin:${CX}px ${CX}px"><circle cx="${CX}" cy="${CX - D}" r="16" opacity="0.32" filter="url(#${p}-glow)"/><circle cx="${CX}" cy="${CX - D}" r="5.5" stroke="#fff" stroke-opacity=".7" stroke-width="1.2"/></g>`;
   if (mode === 'zones' && store.teethOn) g += `<g id="${p}-tooth" class="tap tooth" data-act="brush" role="button" aria-label="Brush teeth before sleep"><circle r="13" fill="${COL.bg}" fill-opacity=".6" stroke="#8E8EF5" stroke-opacity=".7" stroke-width="1.2"/><path d="M-6.5 -8.5c-2.6 0-4.3 2-4.3 4.6 0 2 .8 3.4 1.3 5.1.6 2.4.9 7.6 2.8 7.6 1.6 0 1.7-5.1 3.1-5.1h0c1.4 0 1.5 5.1 3.1 5.1 1.9 0 2.2-5.2 2.8-7.6.5-1.7 1.3-3.1 1.3-5.1 0-2.6-1.7-4.6-4.3-4.6-1.3 0-2.1.7-2.9.7s-1.6-.7-2.9-.7z" fill="none" stroke="#C7C7FF" stroke-width="1.6" stroke-linejoin="round" transform="scale(.82)"/></g>`;
   if (mode === 'zones') g += `<g id="${p}-chores"></g>`;
   const big = D > 150 ? 50 : D > 95 ? 40 : 32;
@@ -815,7 +1004,7 @@ const habitPos = (i, n) => [n > 1 ? 70 + i * (460 / (n - 1)) : 300, ROW_Y];
 const MINI_R = 30, MINI_SW = 9;
 // v13: a slim row of light orbs under the face (chores by strand · habits · dreams), each fills with light
 const ORB_ROW = [['life', 'leaf'], ['work', 'laptop'], ['both', 'link'], null, ['focus', 'flame'], ['gym', 'gym'], ['mandarin', 'chat'], ['protein', 'egg'], ['water', 'water'], null, ['dream', 'moon']];
-function orbRowCol(id) { return id === 'life' || id === 'work' || id === 'both' ? catCol(id) : id === 'dream' ? '#B48CFF' : HABITS[id].col; }
+function orbRowCol(id) { return id === 'life' || id === 'both' ? skyInk(Date.now()) : id === 'work' ? mixHex(skyInk(Date.now()), COL.bg, WORK_DIM) : id === 'dream' ? '#B48CFF' : HABITS[id].col; }
 function orbRowSVG(p) {
   const items = ORB_ROW, gap = 14, step = 40, W = items.reduce((w, it) => w + (it ? step : gap), -step + 0);
   let x = CX - W / 2, g = `<g id="${p}-orow">`;
@@ -824,17 +1013,16 @@ function orbRowSVG(p) {
     const [id, gk] = it, col = orbRowCol(id), r = 11;
     const act = id === 'dream' ? 'data-act="dreamNew"' : ['life', 'work', 'both'].includes(id) ? 'data-act="editChores"' : `data-ring="${id}"`;
     g += `<g class="tap porb" ${act} id="${p}-po-${id}" data-tip="" transform="translate(${x.toFixed(1)} ${ROW_Y})">
-      <radialGradient id="${p}-pg-${id}"><stop offset=".3" stop-color="${col}" stop-opacity=".6"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></radialGradient>
-      <circle r="18" fill="transparent"/><circle class="po-glow" r="${r * 2.1}" fill="url(#${p}-pg-${id})" opacity="0" pointer-events="none"/>
-      <circle r="${r}" fill="${col}" fill-opacity=".05" stroke="${col}" stroke-opacity=".38" stroke-width="1"/>
+      <circle r="18" fill="transparent"/>
+      <circle class="po-ring" r="${r}" fill="${COL.bg}" stroke="${col}" stroke-opacity=".55" stroke-width="1"/>
       <clipPath id="${p}-pc-${id}"><rect id="${p}-pr-${id}" x="${-r}" y="${r}" width="${2 * r}" height="0"/></clipPath>
-      <circle r="${r - 1.2}" fill="${col}" opacity=".85" clip-path="url(#${p}-pc-${id})"/>
-      <circle r="${r}" fill="url(#orb-hi)" opacity=".45"/>
-      <g transform="translate(-6 -6) scale(.5)" fill="none" stroke="#fff" stroke-opacity=".85" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPHS[gk]}"/></g></g>`;
+      <circle class="po-fill" r="${r - 1.2}" fill="${col}" opacity=".26" clip-path="url(#${p}-pc-${id})"/>
+      <g class="po-g" transform="translate(-6.5 -6.5) scale(.5417)" fill="none" stroke="${col}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path vector-effect="non-scaling-stroke" d="${GLYPHS[gk]}"/></g></g>`;
     x += step;
   });
   return g + '</g>';
 }
+const setAttrIf = (n, a, v) => { if (n.getAttribute(a) !== v) n.setAttribute(a, v); };
 function updateOrbRow(p, S) {
   const occ = choreOcc(S, 0).filter((o) => o.k === S.today && o.c), dn = S.dreamToday;
   ORB_ROW.forEach((it) => {
@@ -846,6 +1034,7 @@ function updateOrbRow(p, S) {
     const r = 11, h = 2 * r * f;
     setA(`${p}-pr-${id}`, 'y', (r - h).toFixed(1)); setA(`${p}-pr-${id}`, 'height', h.toFixed(1));
     const el = document.getElementById(`${p}-po-${id}`);
+    if (el && ['life', 'work', 'both'].includes(id)) { const c = orbRowCol(id); el.querySelectorAll('.po-ring,.po-g').forEach((n) => setAttrIf(n, 'stroke', c)); el.querySelectorAll('.po-fill').forEach((n) => setAttrIf(n, 'fill', c)); }
     if (el) { if (el.dataset.tip !== tip) { el.dataset.tip = tip; el.setAttribute('aria-label', tip); } const gl = el.querySelector('.po-glow'); if (gl) gl.setAttribute('opacity', (0.25 + 0.75 * f).toFixed(2) * (f > 0 ? 1 : 0)); el.classList.toggle('full', f >= 0.999); }
   });
 }
@@ -882,6 +1071,11 @@ function updateFace(p, order, defs, mode, S) {
     setA(`${p}-rb-${id}`, 'stroke-dasharray', `${Math.max(0.01, f * C).toFixed(2)} ${C.toFixed(2)}`);
     { const [hx, hy] = pt(r, f); setA(`${p}-hd-${id}`, 'transform', `translate(${hx.toFixed(1)} ${hy.toFixed(1)})`); }
     if (id === 'year') setT(`${p}-t-${id}`, `SUN · DAY ${S.yearDay}/${S.yearDays}`);
+    if (celOn(p, id)) {
+      if (id === 'wheel') { const [ex, ey] = epi(11, S.yearF); setA(`${p}-epi-earth`, 'cx', ex.toFixed(2)); setA(`${p}-epi-earth`, 'cy', ey.toFixed(2)); }
+      if (id === 'year') { const [mx, my] = epi(9, S.moonP); setA(`${p}-epi-moon`, 'cx', mx.toFixed(2)); setA(`${p}-epi-moon`, 'cy', my.toFixed(2)); }
+      if (id === 'moon') { const mb = document.getElementById(`${p}-moonbody`), k = S.moonP.toFixed(3); if (mb && mb.dataset.k !== k) { mb.dataset.k = k; mb.innerHTML = moonGlyph(0, 0, 5.6, S.moonP, '#F1ECE4', '#16121F', 'rgba(255,255,255,.22)'); } }
+    }
     const w = document.getElementById(`${p}-wrap-${id}`);
     if (w) w.style.opacity = id === 'focus' && !S.isDay ? 0.28 : 1;
   });
@@ -893,17 +1087,15 @@ function updateFace(p, order, defs, mode, S) {
   }
   const mg = document.getElementById(p + '-moon');
   if (mg) {
-    if (mi < 0) mg.innerHTML = '';
+    if (mi < 0 || celOn(p, 'moon')) mg.innerHTML = '';
     else { const [x, y] = pt(L.radii[mi], defs.moon.f(S)); mg.innerHTML = `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="14" fill="url(#${p}-hglow)" opacity=".35"/><circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7.5" fill="${COL.bg}"/>` + moonGlyph(+x.toFixed(1), +y.toFixed(1), 6.5, S.moonP, '#F2F2F7', '#1C1C1E', COL.bg); }
   }
   const D = L.dial;
   const hasSun = S.sun.polar === null;
   if (mode === 'zones') {
-    setA(p + '-z1', 'd', hasSun ? arcD(D, S.rise, S.mEnd) : '');
-    setA(p + '-z2', 'd', hasSun ? arcD(D, S.mEnd, S.eStart) : '');
-    setA(p + '-z3', 'd', hasSun ? arcD(D, S.eStart, S.set) : '');
+    setA(p + '-z1', 'd', ''); setA(p + '-z2', 'd', ''); setA(p + '-z3', 'd', ''); // v18: the sky ring replaces the sun zones
     setA(p + '-z1', 'opacity', S.zone === 'morning' ? 1 : 0.45); setA(p + '-z2', 'opacity', S.zone === 'afternoon' ? 1 : 0.45); setA(p + '-z3', 'opacity', S.zone === 'evening' ? 1 : 0.45);
-    setA(p + '-z1b', 'd', hasSun ? arcD(D, S.rise, S.mEnd) : ''); setA(p + '-z2b', 'd', hasSun ? arcD(D, S.mEnd, S.eStart) : ''); setA(p + '-z3b', 'd', hasSun ? arcD(D, S.eStart, S.set) : '');
+    setA(p + '-z1b', 'd', ''); setA(p + '-z2b', 'd', ''); setA(p + '-z3b', 'd', '');
     const [x1, y1] = pt(D - 10, dialF(S.set)), [x2, y2] = pt(D + 12, dialF(S.set));
     setA(p + '-stop', 'x1', x1.toFixed(1)); setA(p + '-stop', 'y1', y1.toFixed(1)); setA(p + '-stop', 'x2', x2.toFixed(1)); setA(p + '-stop', 'y2', y2.toFixed(1));
     setA(p + '-stop', 'opacity', hasSun ? 1 : 0);
@@ -932,8 +1124,8 @@ function updateFace(p, order, defs, mode, S) {
     if (cgl && cgl.dataset.k !== cgk) {
       cgl.dataset.k = cgk;
       cgl.innerHTML = S.isDay
-        ? `<defs><radialGradient id="${p}-csg"><stop offset="0" stop-color="#FFF6E8"/><stop offset=".55" stop-color="#FFB8E6"/><stop offset="1" stop-color="#B14BFF" stop-opacity="0"/></radialGradient></defs><circle cx="${CX}" cy="${CX}" r="36" fill="url(#${p}-csg)" opacity=".22" class="breathe"/><circle cx="${CX}" cy="${CX}" r="9" fill="url(#${p}-csg)"/>` + Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6, c = Math.cos(a), s2 = Math.sin(a); return `<line x1="${(CX + 16 * c).toFixed(1)}" y1="${(CX + 16 * s2).toFixed(1)}" x2="${(CX + (i % 3 ? 20 : 24) * c).toFixed(1)}" y2="${(CX + (i % 3 ? 20 : 24) * s2).toFixed(1)}" stroke="#FFD9F0" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>`; }).join('')
-        : `<circle cx="${CX}" cy="${CX}" r="32" fill="#C7C7FF" opacity=".08" filter="url(#${p}-glow)" class="breathe"/>` + moonGlyph(CX, CX, 17, S.moonP, '#F2F2F7', '#2C2C3A', COL.bg);
+        ? `<defs><radialGradient id="${p}-csg"><stop offset="0" stop-color="#FFF6E8"/><stop offset=".55" stop-color="#FFB8E6"/><stop offset="1" stop-color="#B14BFF" stop-opacity="0"/></radialGradient></defs><circle cx="${CX}" cy="${CX}" r="36" fill="url(#${p}-csg)" opacity=".22"/><circle cx="${CX}" cy="${CX}" r="9" fill="url(#${p}-csg)"/>` + Array.from({ length: 12 }, (_, i) => { const a = i * Math.PI / 6, c = Math.cos(a), s2 = Math.sin(a); return `<line x1="${(CX + 16 * c).toFixed(1)}" y1="${(CX + 16 * s2).toFixed(1)}" x2="${(CX + (i % 3 ? 20 : 24) * c).toFixed(1)}" y2="${(CX + (i % 3 ? 20 : 24) * s2).toFixed(1)}" stroke="#FFD9F0" stroke-width="1.2" stroke-linecap="round" opacity=".55"/>`; }).join('')
+        : `<circle cx="${CX}" cy="${CX}" r="32" fill="#C7C7FF" opacity=".08" filter="url(#${p}-glow)"/>` + moonGlyph(CX, CX, 17, S.moonP, '#F2F2F7', '#2C2C3A', COL.bg);
     }
     setT(p + '-peekT', `${S.hhmm}:${S.ss}`);
     setT(p + '-peekS', S.sunLine);
@@ -943,7 +1135,7 @@ function updateFace(p, order, defs, mode, S) {
     if (cg && cg.dataset.k !== ck) { cg.innerHTML = flatChoresSVG(S, D); cg.dataset.k = ck; }
     const og = document.getElementById(p + '-orbit');
     const hk = ck + '|' + helixPhi.toFixed(1) + '|' + helixZoom.toFixed(3);
-    if (og && store.orbit && og.dataset.k !== hk) { og.innerHTML = helixSVG(S, D, helixPhi); og.dataset.k = hk; }
+    if (og && store.orbit && !morph && og.dataset.k !== hk) { og.innerHTML = helixSVG(S, D, helixPhi); og.dataset.k = hk; }
     const tooth = document.getElementById(p + '-tooth');
     if (tooth) {
       const [tx, ty] = pt(D, dialF(wrap(S.bed - 30)));
@@ -959,17 +1151,17 @@ function updateFace(p, order, defs, mode, S) {
 
 // ===================== VIEWS =====================
 const TABS = [
-  ['now', 'Now', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>'],
-  ['today', 'Today', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'],
-  ['cycles', 'Cycles', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>'],
-  ['life', 'Life', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>'],
-  ['journal', 'Journal', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 3h11a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>'],
-  ['dreams', 'Dreams', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 3l1.6 4.9L18.5 9.5l-4.9 1.6L12 16l-1.6-4.9L5.5 9.5l4.9-1.6z"/><path d="M18.5 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>'],
+  ['now', 'Now', gk('now', 24, 'ti', 1.5)],
+  ['today', 'Today', gk('sun', 24, 'ti', 1.5)],
+  ['cycles', 'Cycles', gk('moon', 24, 'ti', 1.5)],
+  ['life', 'Life', gk('heart', 24, 'ti', 1.5)],
+  ['journal', 'Journal', gk('page', 24, 'ti', 1.5)],
+  ['dreams', 'Dreams', gk('spark', 24, 'ti', 1.5)],
 ];
 const SECTIONS = ['now', 'today', 'cycles', 'life', 'journal', 'dreams'];
 const TOP = [
-  ['cosmos', 'Cosmos', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M12 2l2.2 6.8L21 11l-6.8 2.2L12 20l-2.2-6.8L3 11l6.8-2.2z"/></svg>'],
-  ['settings', 'Settings', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>'],
+  ['cosmos', 'Cosmos', gk('spark', 24, 'ti', 1.5)],
+  ['settings', 'Settings', gk('gear', 24, 'ti', 1.5)],
 ];
 let tab = 'now', deepIdx = -1, sheet = null, convMode = 'date', convDate = '', convAgo = '300000', confirmReset = false;
 const openedAt = Date.now();
@@ -989,7 +1181,7 @@ function deepMsgs(S) {
     'Whatever feels huge today is happening on a planet doing 29.78 km/s, around a star doing 230 km/s, around a black hole of about 4 million Suns. Breathe. Then decide.',
   ];
 }
-const ORBIT_ICON = `<svg class="oi oi-helix" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20c0-3 12-3 12-6S6 11 6 8s12-3 12-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M18 20c0-3-12-3-12-6s12-3 12-6S6 5 6 2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".45"/></svg><svg class="oi oi-flat" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="4" r="2.2" fill="currentColor"/></svg>`;
+const ORBIT_ICON = gk('helix', 24, 'oi oi-helix', 1.5) + gk('dial', 24, 'oi oi-flat', 1.5);
 function viewNow(S) {
   return `<div class="now-wrap"><div>
     <div class="center hello"><div class="eyebrow" data-t="placeLine"></div><div class="greet" data-t="greet"></div>
@@ -1012,7 +1204,7 @@ function ctxHTML(S) {
   const lines = [];
   const Q = !!store.quiet, H3 = (html) => (Q ? '' : html);
   if (S.drift && !Q) lines.push(`<div class="soft">${esc(S.driftLine)}</div>`);
-  S.bdaySoon.forEach((b) => lines.push(`<div class="soft">🎂 ${esc(bdayLine(b))}</div>`));
+  S.bdaySoon.forEach((b) => lines.push(`<div class="soft gl-line">${gk('cake', 15)}${esc(bdayLine(b))}</div>`));
   if (!S.isDay) {
     const wrote = !!(S.nd.journal || '').trim();
     return `${lines.join('')}${H3('<h3 style="color:#8E8EF5">Tonight</h3>')}${store.teethOn ? chk(S.brushed, 'Brush teeth', 'brush') : ''}${chk(wrote, wrote ? "Tonight's line is written" : "One line for today's journal", 'tab:journal')}
@@ -1038,7 +1230,7 @@ function quickHTML(S) {
     return `<div class="quick">${S.wakeLogged ? '' : ib(glyphHTML('☀', '', 18), 'awake', 'yellow fill', "I'm awake")}${ib('+25m', 'focus:25', S.wakeLogged ? 'green fill' : '', '+25 min satisfying work')}${ib(glyphHTML('💧', '', 18), 'water:250', 'gq', '+250 ml')}${ib(`<span class="dbl">${glyphHTML('💧', '', 16)}${glyphHTML('💧', '', 16)}</span>`, 'water:500', 'gq', '+500 ml')}${ib(glyphHTML('🍽', '', 18), 'sheet:protein', 'gq', 'Food & sugar')}</div>`;
   }
   if (!S.isDay) return `<div class="quick">${pill("Write tonight's line", 'tab:journal', 'fill night')}</div>`;
-  return `<div class="quick">${S.wakeLogged ? '' : pill("☀︎ I'm awake", 'awake', 'yellow fill')}${pill('+25m satisfying work', 'focus:25', S.wakeLogged ? 'green fill' : '')}${pill('💧 +250 ml', 'water:250')}${pill('+500 ml', 'water:500')}${pill('Food & sugar…', 'sheet:protein')}</div>`;
+  return `<div class="quick">${S.wakeLogged ? '' : pill(`${gk('sun', 16)}I'm awake`, 'awake', 'yellow fill gpill')}${pill('+25m satisfying work', 'focus:25', S.wakeLogged ? 'green fill' : '')}${pill(`${gk('water', 16)}+250 ml`, 'water:250', 'gpill')}${pill('+500 ml', 'water:500')}${pill('Food & sugar…', 'sheet:protein')}</div>`;
 }
 function focusCard() {
   return `<div class="card"><h3 style="color:${COL.green}">Satisfying work</h3><div class="big" data-t="focusBig"></div><div class="muted" data-t="focusSub"></div>
@@ -1111,7 +1303,7 @@ function dreamListHTML() {
     ${d.text ? `<div class="dream-text">${esc(d.text)}</div>` : ''}${d.tags.length ? `<div class="tags" style="margin-top:6px">${d.tags.map((t) => `<span class="tag sm">${esc(t)}</span>`).join('')}</div>` : ''}</div>`).join('') + (list.length > 50 ? `<div class="muted">Showing the newest 50 of ${list.length}.</div>` : '');
 }
 function lightCard() {
-  return `<div class="card"><h3 style="color:${COL.yellow}">Light & sleep</h3><div class="row">${pill("☀︎ I'm awake", 'awake', 'yellow fill')}<span class="muted" data-t="wakeLine"></span></div>
+  return `<div class="card"><h3 style="color:${COL.yellow}">Light & sleep</h3><div class="row">${pill(`${gk('sun', 16)}I'm awake`, 'awake', 'yellow fill gpill')}<span class="muted" data-t="wakeLine"></span></div>
     <div style="margin-top:12px;font-size:15px;line-height:1.5" data-t="lightLine"></div><div style="margin-top:8px;font-size:15px;line-height:1.5" data-t="sleepLine"></div>
     <div class="muted" style="margin-top:8px" data-t="zonesLine"></div>
     <div class="dream-sec"><div class="row" style="justify-content:space-between"><h3 style="color:#B48CFF;margin:0">✦ Dream journal</h3>${pill('+ Log a dream', 'dreamNew', 'blue fill')}</div>
@@ -1133,7 +1325,7 @@ function shapeCard() {
 }
 function choresCard() {
   const rows = store.chores.map((c) => `<div class="blk"><div class="row" style="flex-wrap:nowrap">
-      <select class="field slim icon-pick" data-f="choreIcon:${c.id}" aria-label="Icon">${(CHORE_ICONS.includes(c.icon) ? CHORE_ICONS : [c.icon, ...CHORE_ICONS]).map((ic) => `<option ${ic === c.icon ? 'selected' : ''}>${ic}</option>`).join('')}</select>
+      <details class="emo-more"><summary class="emo-sum" style="--c:${choreSky(c, compute(Date.now()))}" aria-label="Icon (more)" title="Icon · more">${glyphHTML(c.icon, c.name, 18)}</summary><select class="field slim icon-pick" data-f="choreIcon:${c.id}" aria-label="Icon">${(CHORE_ICONS.includes(c.icon) ? CHORE_ICONS : [c.icon, ...CHORE_ICONS]).map((ic) => `<option ${ic === c.icon ? 'selected' : ''}>${ic}</option>`).join('')}</select></details>
       <input class="field slim" data-f="choreName:${c.id}" value="${esc(c.name)}" style="flex:1" aria-label="Chore name"><button class="pill" data-act="choreDel:${c.id}" aria-label="Delete chore">✕</button></div>
     <div class="row cats" style="margin-top:6px">${CATS.map(([v, l]) => `<button class="cat cat-${v} ${catOf(c) === v ? 'on' : ''}" data-act="choreCat:${c.id}:${v}" aria-pressed="${catOf(c) === v}">${l}</button>`).join('')}<label class="muted inl">for <input type="number" min="0" max="600" step="5" class="field slim" data-f="choreLen:${c.id}" value="${+c.len || 0}" style="width:68px" aria-label="Duration in minutes"> min</label></div>
     <div class="row" style="margin-top:6px"><input type="time" class="field slim" data-f="choreTime:${c.id}" value="${hm(c.time)}" style="width:auto" aria-label="Time">
@@ -1144,7 +1336,7 @@ function choresCard() {
       ${c.repeat === 'weekly' ? `<select class="field slim" data-f="choreWd:${c.id}" style="width:auto">${WD_SHORT.map((d, i) => `<option value="${i}" ${(+c.wd || 0) === i ? 'selected' : ''}>${d}</option>`).join('')}</select>` : ''}</div></div>`).join('');
   return `<div class="card"><h3 style="color:${COL.yellow}">Chores on the sun</h3><div class="muted">Life sits on the day ring, work just inside it, and Both bridges the two. On Now: tap an icon to tick it, drag it around the dial to move its time, long-press to see what it is. The helix shows the next days as a double strand.</div>
     <div data-h="choreList" style="margin-top:10px"></div>
-    <details class="sub"><summary>Edit chores</summary><div class="muted" style="margin:4px 0 8px">Work has no fixed days, so work chores default to daily.</div><button class="check ${store.teethOn ? 'on' : ''}" data-act="teethOn" style="margin-bottom:8px"><span class="box">${store.teethOn ? '✓' : ''}</span><span>🦷 Show brush teeth at bedtime</span></button>${rows}
+    <details class="sub"><summary>Edit chores</summary><div class="muted" style="margin:4px 0 8px">Work has no fixed days, so work chores default to daily.</div><button class="check ${store.teethOn ? 'on' : ''}" data-act="teethOn" style="margin-bottom:8px"><span class="box">${store.teethOn ? '✓' : ''}</span><span>Show brush teeth at bedtime</span></button>${rows}
       <div class="row" style="margin-top:12px">${pill('+ Add a chore', 'choreAdd', 'yellow fill')}</div></details></div>`;
 }
 function choreListHTML(S) {
@@ -1152,7 +1344,7 @@ function choreListHTML(S) {
   return store.chores.map((c) => {
     const due = dueOn(c, S.today), done = choreDone(c, S.today), od = due && !done && S.nowMin > c.time + 30, nx = choreNext(c, S), st = choreStreak(c, S);
     const status = due ? (done ? 'done today ✓' : od ? 'overdue, whenever u can' : 'today ' + hm(c.time)) : nx ? 'next ' + nx.label : 'not scheduled';
-    return `<div class="shape-row ${od ? 'od' : ''}"><button class="chip-ic ${done ? 'done' : ''}" data-act="chore:${c.id}:${S.today}" ${due ? '' : 'disabled'} aria-label="Tick ${esc(c.name)}">${c.icon}</button><span class="nm"><span class="catdot" style="background:${catCol(catOf(c))}"></span>${esc(c.name)}<span class="muted" style="display:block;font-size:12.5px">${CATS.find((x) => x[0] === catOf(c))[1]} · ${repeatText(c)}${c.len ? ` · ${c.len} min` : ''} · ${status}${st ? ` · streak ${st}` : ''}</span></span></div>`;
+    return `<div class="shape-row ${od ? 'od' : ''}"><button class="chip-ic ${done ? 'done' : ''}" data-act="chore:${c.id}:${S.today}" ${due ? '' : 'disabled'} aria-label="Tick ${esc(c.name)}" style="--c:${choreSky(c, S)}">${glyphHTML(c.icon, c.name, 18)}</button><span class="nm"><span class="catdot" style="background:${catCol(catOf(c))}"></span>${esc(c.name)}<span class="muted" style="display:block;font-size:12.5px">${CATS.find((x) => x[0] === catOf(c))[1]} · ${repeatText(c)}${c.len ? ` · ${c.len} min` : ''} · ${status}${st ? ` · streak ${st}` : ''}</span></span></div>`;
   }).join('');
 }
 function viewToday(S) {
@@ -1330,8 +1522,8 @@ function bind(S) {
     reviewTitle: S.isDay ? 'Sunset review · opens properly after sunset' : 'Sunset review · 2 minutes',
     reviewSum: `Today: ${dur(td.focus)} satisfying work · ${td.gymMin || 0}m gym · ${td.mandarin || 0}m 中文 · ${td.protein || 0}g protein · ${litres(td.water || 0)} water · ${checksOf(td)}/3 checks`,
     wakeLine: S.wakeLogged ? `Awake at ${hm(S.wakeMin)} today` : `Not logged · using sunrise ${hm(S.rise)}`,
-    lightLine: `☀︎ Get outside light within 30–60 min of waking, by about ${hm(S.wakeMin + 60)}.`,
-    sleepLine: `☾ Sleep window: bed ${hm(S.bedEarly)}–${hm(S.bedLate)} for 7–9 h before a ${hm(S.wakeMin)} wake-up.`,
+    lightLine: `Get outside light within 30–60 min of waking, by about ${hm(S.wakeMin + 60)}.`,
+    sleepLine: `Sleep window: bed ${hm(S.bedEarly)}–${hm(S.bedLate)} for 7–9 h before a ${hm(S.wakeMin)} wake-up.`,
     zonesLine: S.sun.polar ? 'No normal sunrise or sunset here today.' : `Clearest hours ${hm(S.rise > S.wakeMin ? S.rise : S.wakeMin)}–${hm(S.mEnd)} · dip ${hm(S.mEnd)}–${hm(S.eStart)} · wind-down ${hm(S.eStart)}–${hm(S.set)}. A rule of thumb, not lab science.`,
     cyclesSub: `Moon day ${S.moonDays.toFixed(1)} of 29.5 · Turn ${(S.tf * 100).toFixed(2)}%`,
     moonName: phaseName(S.moonDays), moonSub: `Day ${S.moonDays.toFixed(1)} of 29.5 · ${S.moonPrompt}`, intLabel: `This Moon's intention (Moon from ${S.moonKey})`,
@@ -1352,7 +1544,7 @@ function bind(S) {
   store.people.forEach((p) => {
     const since = p.last ? Math.floor((kms(S.today) - kms(p.last)) / 86400000) : -1, fresh = since >= 0 && since <= p.every;
     const bd = S.bdays.find((b) => b.p.id === p.id);
-    const bdTxt = bd ? (bd.days === 0 ? ' · 🎂 birthday today' : bd.days <= 14 ? ` · 🎂 birthday in ${bd.days} day${bd.days > 1 ? 's' : ''}` : '') : '';
+    const bdTxt = bd ? (bd.days === 0 ? ' · birthday today' : bd.days <= 14 ? ` · birthday in ${bd.days} day${bd.days > 1 ? 's' : ''}` : '') : '';
     T['ps_' + p.id] = (since < 0 ? 'Not logged yet' : fresh ? (since === 0 ? 'Talked today' : `Talked ${since} day${since > 1 ? 's' : ''} ago`) : `Been ${since} days, a good time to say hi`) + bdTxt;
     BG['pd_' + p.id] = fresh ? COL.green : '#636366';
   });
@@ -1413,7 +1605,8 @@ function sheetHTML(kind, S) {
     case 'quick': return quickSheet();
     case 'dream': return (store.quiet && !dreamMore ? '' : head('Dream journal', '#B48CFF')) + dreamSheet();
     case 'moon': return head('Moon', COL.cyan) + `<div class="card"><div style="font-size:20px;font-weight:700" data-t="moonName"></div><div class="muted" data-t="moonSub"></div><label class="lbl"><span data-t="intLabel"></span><input class="field" data-f="intention" value="${esc(store.intentions[S.moonKey] || '')}" placeholder="One thing this Moon is for…"></label></div>`;
-    case 'wheel': return head('Galaxy', COL.red) + `<div class="card"><div style="font-size:15px;line-height:1.55" data-t="galaxyLine"></div><div style="margin-top:12px">${pill('✦ Deep Look', 'deep', 'blue fill')}</div><div data-h="deep"></div></div>`;
+    case 'year': return head('Earth', CEL.year.b) + `<div class="card"><div style="font-size:15px;line-height:1.55">Day ${S.yearDay} of ${S.yearDays}. Earth is ${(S.yearF * 100).toFixed(1)}% of the way around the Sun since 1 January.</div></div>`;
+    case 'wheel': return head('Sun · Sagittarius A*', CEL.wheel.b) + `<div class="card"><div style="font-size:15px;line-height:1.55" data-t="galaxyLine"></div><div style="margin-top:12px">${pill('✦ Deep Look', 'deep', 'blue fill')}</div><div data-h="deep"></div></div>`;
     case 'sun': return head('Sun dial', COL.yellow) + lightCard() + journalCard(S);
     case 'turn': case 'breath': case 'life': return head(kind[0].toUpperCase() + kind.slice(1), COL.yellow) + `<div class="card"><div class="muted" data-t="${kind === 'life' ? 'lifeSub2' : 'turnSub'}"></div></div>`;
     default: return head('', '#fff');
@@ -1432,10 +1625,10 @@ function closeSheet() { if (sheet === 'quick') { qa = null; drawGhost(null); cho
 
 // ===================== RENDER + TICK =====================
 function renderTop() {
-  const seg = tab === 'now' ? `<div class="tb-seg desk-only" role="group" aria-label="View"><button class="${store.orbit ? 'on' : ''}" data-act="orbitSet:1" aria-label="Helix" title="Helix (Space)">${ORBIT_ICON.split('</svg>')[0]}</svg></button><button class="${store.orbit ? '' : 'on'}" data-act="orbitSet:0" aria-label="Dial" title="Dial (Space)"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="4" r="2" fill="currentColor"/></svg></button></div>` : '';
+  const seg = tab === 'now' ? `<div class="tb-seg desk-only" role="group" aria-label="View"><button class="${store.orbit ? 'on' : ''}" data-act="orbitSet:1" aria-label="Helix" title="Helix (Space)">${gk('helix', 16, '', 1.5)}</button><button class="${store.orbit ? '' : 'on'}" data-act="orbitSet:0" aria-label="Dial" title="Dial (Space)">${gk('dial', 16, '', 1.5)}</button></div>` : '';
   $('#topbar').innerHTML = `<div class="tb-l">${seg}</div><div class="tb-r">` + TOP.map(([id, label, icon]) => `<button class="topbtn mob-only ${tab === id ? 'on' : ''}" data-act="tab:${id}" aria-label="${label}" title="${label}">${icon}</button>`).join('')
-    + `<button class="topbtn desk-only" data-act="palette" aria-label="Command palette" title="Command palette (⌘K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z"/></svg></button>`
-    + (tab === 'now' ? `<button class="topbtn desk-only ${store.insp ? 'on' : ''}" data-act="insp" aria-label="Inspector" title="Inspector"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M15 4v16"/></svg></button>` : '') + '</div>';
+    + `<button class="topbtn desk-only" data-act="palette" aria-label="Command palette" title="Command palette (⌘K)">${gk('search', 18, '', 1.5)}</button>`
+    + (tab === 'now' ? `<button class="topbtn desk-only ${store.insp ? 'on' : ''}" data-act="insp" aria-label="Inspector" title="Inspector">${gk('panel', 18, '', 1.5)}</button>` : '') + '</div>';
 }
 function renderTabs() {
   renderTop();
@@ -1461,6 +1654,21 @@ function render() {
   tick();
   if (tab === 'now') renderInsp();
 }
+// v15: no 1 s heartbeat. Redraw on the minute, on interaction, or every second only while seconds are visible.
+let tickT = 0;
+function needSeconds() {
+  if (document.hidden) return false;
+  if (store.timer) return true;
+  if (document.querySelector('#now-peek.show')) return true;
+  if (!store.quiet && ((tab === 'now' && !store.orbit) || tab === 'cosmos')) return true;
+  return false;
+}
+function schedTick() {
+  clearTimeout(tickT);
+  if (document.hidden) return;
+  const now = Date.now(), ms = needSeconds() ? 1000 - (now % 1000) + 4 : 60000 - (now % 60000) + 30;
+  tickT = setTimeout(tick, ms);
+}
 function tick() {
   const S = compute(Date.now());
   if (tab === 'now') {
@@ -1474,6 +1682,7 @@ function tick() {
   if (tab === 'cosmos') updateFace('orr', ORRERY_ORDER, ORRERY_RINGS, 'day', S);
   bind(S);
   reminders(S);
+  schedTick();
 }
 
 // ===================== REMINDERS (in-app scheduling, silent) =====================
@@ -1558,12 +1767,12 @@ function act(a) {
     case 'stop': if (store.timer !== null) { const m = Math.min(600, Math.max(0, (Date.now() - store.timer) / 60000)); store.timer = null; changeDay((d) => { d.focus += Math.round(m); }); } return;
     case 'chk': changeDay((d) => { d[arg] = !d[arg]; }); return;
     case 'peek': {
-      const pk = $('#now-peek'); if (!pk) return; pk.classList.add('show'); clearTimeout(window.__peekT); window.__peekT = setTimeout(() => pk.classList.remove('show'), 3200); return;
+      const pk = $('#now-peek'); if (!pk) return; pk.classList.add('show'); tick(); schedTick(); clearTimeout(window.__peekT); window.__peekT = setTimeout(() => { pk.classList.remove('show'); schedTick(); }, 3200); return;
     }
     case 'orbit': {
       store.orbit = !store.orbit; save(); choreVer++;
-      const f = $('#nowFace'); if (f) { f.classList.toggle('orbit-on', store.orbit); const b = f.querySelector('.orbit-btn'); if (b) b.setAttribute('aria-pressed', store.orbit); }
-      renderTop(); tick(); return;
+      const f = $('#nowFace'); if (f) { const b = f.querySelector('.orbit-btn'); if (b) b.setAttribute('aria-pressed', store.orbit); }
+      renderTop(); morphFace(store.orbit); return;
     }
     case 'orbitSet': if (!!store.orbit !== (arg === '1')) act('orbit'); return;
     case 'qaPick': qaPicker = !qaPicker; showQuick(); return;
@@ -1573,11 +1782,11 @@ function act(a) {
       const c = store.chores.find((x) => x.id === arg); if (!c) return;
       const k = arg2 || dkey(Date.now()), d = dayOf(k); d.chores = d.chores || {}; d.chores[c.id] = !d.chores[c.id]; save(); choreVer++; tick();
       const S = compute(Date.now()), nx = choreNext(c, S), st = choreStreak(c, S);
-      toast(d.chores[c.id] ? `${c.icon} ${c.name} ✓${st > 1 ? ` · streak ${st}` : ''}${nx ? ` · next ${nx.label}` : ''}` : `${c.icon} ${c.name} unticked${nx ? ` · next ${nx.label}` : ''}`);
+      toast(d.chores[c.id] ? `${c.name} ✓${st > 1 ? ` · streak ${st}` : ''}${nx ? ` · next ${nx.label}` : ''}` : `${c.name} unticked${nx ? ` · next ${nx.label}` : ''}`);
       return;
     }
     case 'teethOn': store.teethOn = !store.teethOn; save(); choreVer++; render(); return;
-    case 'brushOn': { const d = dayOf(arg); d.brushed = !d.brushed; save(); choreVer++; tick(); toast(d.brushed ? '🦷 Teeth ✓' : '🦷 Teeth unticked'); return; }
+    case 'brushOn': { const d = dayOf(arg); d.brushed = !d.brushed; save(); choreVer++; tick(); toast(d.brushed ? 'Teeth ✓' : 'Teeth unticked'); return; }
     case 'choreAdd': { const S = compute(Date.now()); store.chores.push({ id: 'c' + Date.now(), icon: '✨', name: 'New chore', time: Math.min(1439, (Math.floor(S.nowMin / 60) + 1) * 60), repeat: 'daily', created: S.today, cat: 'life', len: 0 }); save(); choreVer++; render(); openChoreEditor(); return; }
     case 'choreDel': store.chores = store.chores.filter((c) => c.id !== arg); save(); choreVer++; render(); openChoreEditor(); return;
     case 'choreDay': store.chores = store.chores.map((c) => { if (c.id !== arg) return c; const ds = new Set(c.days || []), n = +arg2; if (ds.has(n)) ds.delete(n); else ds.add(n); return { ...c, days: [...ds].sort() }; }); save(); choreVer++; render(); openChoreEditor(); return;
@@ -1725,7 +1934,7 @@ function field(f, v) {
 // ===================== PLOTTING: tray, ghost, hit-testing, quick-add =====================
 function trayHTML(S) {
   const list = store.chores.filter((c) => c.repeat !== 'once' || (c.date || '') >= S.today).slice().sort((a, b) => a.time - b.time);
-  return list.map((c) => `<button class="tr-it ${choreDone(c, S.today) ? 'done' : ''}" data-chore="${c.id}" aria-label="${esc(c.name)}" data-tip="${esc(`${c.icon} ${c.name} · ${catOf(c)} · ${repeatText(c).toLowerCase()} · ${hm(c.time)}`)}"><span class="tr-orb" style="--c:${catCol(catOf(c))}">${glyphHTML(c.icon, c.name, 22)}</span></button>`).join('')
+  return list.map((c) => `<button class="tr-it ${choreDone(c, S.today) ? 'done' : ''}" data-chore="${c.id}" aria-label="${esc(c.name)}" data-tip="${esc(`${c.name} · ${catOf(c)} · ${repeatText(c).toLowerCase()} · ${hm(c.time)}`)}"><span class="tr-orb mk-${catOf(c)}" style="--c:${choreSky(c, S)}">${glyphHTML(c.icon, c.name, 22)}</span></button>`).join('')
     + `<button class="tr-it tr-add${list.length ? '' : ' first'}" data-chore="+" aria-label="Plot something new" data-tip="New: drag onto the helix, or tap">+</button>`;
 }
 const faceSvg = () => document.querySelector('#nowFace > svg');
@@ -1740,7 +1949,7 @@ function hitFace(clientX, clientY) {
     const { cx, cy, rx, ry, pitch } = HX, Z = helixZoom;
     if (Math.hypot(q.x - CX, q.y - CX) > 252 && Z > 1.01) return null;
     q.x = cx + (q.x - cx) / Z; q.y = cy + (q.y - cy) / Z;
-    const P = (dt, off) => { const a = ((dt / 1440) * 360 + helixPhi + off) * Math.PI / 180; return [cx + rx * Math.sin(a), cy + ry * Math.cos(a) - (dt / 1440) * pitch, Math.cos(a)]; };
+    const P = (dt, off) => helixPt(dt, off);
     let best = null;
     for (let dt = -60; dt <= HX.ahead; dt += 5) {
       const L = P(dt, 0), W = P(dt, 180), B = [(L[0] + W[0]) / 2, (L[1] + W[1]) / 2, 0];
@@ -1765,9 +1974,9 @@ function hitFace(clientX, clientY) {
 function drawGhost(h, icon, cat, bubble) {
   const g = document.getElementById('now-ghost'); if (!g) return;
   if (!h) { g.innerHTML = ''; return; }
-  const col = catCol(cat), S = compute(Date.now());
+  const S = compute(Date.now()), sk = skyInk(kms(h.k) + h.m * 60000), col = cat === 'work' ? mixHex(sk, COL.bg, WORK_DIM) : sk; // v18: the sky at that time
   const when = `${h.k === S.today ? '' : WD_SHORT[wdOf(h.k)] + ' '}${hm(h.m)}`;
-  g.innerHTML = `<circle cx="${h.x.toFixed(1)}" cy="${h.y.toFixed(1)}" r="19" fill="${col}" opacity=".22" filter="url(#now-glow)"/><circle cx="${h.x.toFixed(1)}" cy="${h.y.toFixed(1)}" r="15" fill="${COL.bg}" fill-opacity=".7" stroke="${col}" stroke-width="2" stroke-dasharray="4 3"/><text x="${h.x.toFixed(1)}" y="${(h.y + 5.5).toFixed(1)}" text-anchor="middle" font-size="15" opacity=".9">${icon}</text>`
+  g.innerHTML = `<circle cx="${h.x.toFixed(1)}" cy="${h.y.toFixed(1)}" r="19" fill="${col}" opacity=".22" filter="url(#now-glow)"/><circle cx="${h.x.toFixed(1)}" cy="${h.y.toFixed(1)}" r="15" fill="${COL.bg}" fill-opacity=".7" stroke="${col}" stroke-width="2" stroke-dasharray="4 3"/><g transform="translate(${(h.x - 9).toFixed(1)} ${(h.y - 9).toFixed(1)}) scale(.75)" fill="none" stroke="${col}" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPHS[glyphKey(icon, '')]}"/></g>`
     + (bubble ? `<g transform="translate(${h.x.toFixed(1)} ${(h.y - 34).toFixed(1)})"><rect x="-${when.length * 3.9 + 9}" y="-12" width="${when.length * 7.8 + 18}" height="22" rx="11" fill="${COL.bg}" fill-opacity=".9" stroke="${col}" stroke-opacity=".7"/><text y="3.5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff" style="font-variant-numeric:tabular-nums">${when}</text></g>` : '');
 }
 // place an existing chore at (k, m): repeating ones keep their rhythm, the day nudges it where it makes sense
@@ -1801,32 +2010,32 @@ let selK = null;
 function renderInsp() {
   const el = document.getElementById('insp'); if (!el) return;
   el.dataset.v = String(choreVer);
-  if (!qa || sheet === 'quick') { el.innerHTML = `<div class="insp-empty"><span class="glyph">✦</span><span class="ql">Click a chore to edit it. Double-click a strand to add. ⌘K for everything.</span></div>`; return; }
+  if (!qa || sheet === 'quick') { el.innerHTML = `<div class="insp-empty"><span class="glyph">${gk('spark', 16)}</span><span class="ql">Click a chore to edit it. Double-click a strand to add. ⌘K for everything.</span></div>`; return; }
   const c = qa.id && store.chores.find((x) => x.id === qa.id), S = compute(Date.now()), k = selK || S.today;
-  const head = c ? `<div class="insp-head"><div class="insp-t"><b><span class="ig" style="color:${catCol(catOf(c))}">${glyphHTML(c.icon, c.name, 16)}</span> ${esc(c.name)}</b><span>${catOf(c)} · ${esc(repeatText(c))} · ${hm(c.time)}${c.len ? ` · ${c.len}m` : ''}</span></div>${dueOn(c, k) ? `<button class="pill ${choreDone(c, k) ? 'green fill' : ''}" data-act="chore:${c.id}:${k}" title="Done (Return)" aria-label="Done">✓</button>` : ''}</div>` : '';
+  const head = c ? `<div class="insp-head"><div class="insp-t"><b><span class="ig" style="color:${choreSky(c, compute(Date.now()))}">${glyphHTML(c.icon, c.name, 16)}</span> ${esc(c.name)}</b><span>${catOf(c)} · ${esc(repeatText(c))} · ${hm(c.time)}${c.len ? ` · ${c.len}m` : ''}</span></div>${dueOn(c, k) ? `<button class="pill ${choreDone(c, k) ? 'green fill' : ''}" data-act="chore:${c.id}:${k}" title="Done (Return)" aria-label="Done">✓</button>` : ''}</div>` : '';
   el.innerHTML = head + quickSheet();
 }
 function nextIconsHTML(S) {
   const occ = choreOcc(S, 2).filter((o) => o.dt >= 0 && !o.done).sort((a, b) => a.dt - b.dt).slice(0, 6);
-  return occ.map((o) => `<button class="ni" ${o.c ? `data-sel="${o.c.id}:${o.k}"` : ''} title="${esc(`${o.name} · ${o.k === S.today ? '' : WD_SHORT[wdOf(o.k)] + ' '}${hm((o.t - kms(o.k)) / 60000)}`)}" aria-label="${esc(o.name)}"><span class="tr-orb sm" style="--c:${catCol(o.cat)}">${glyphHTML(o.icon, o.name, 16)}</span><em class="ql">${hm((o.t - kms(o.k)) / 60000)}</em></button>`).join('');
+  return occ.map((o) => `<button class="ni" ${o.c ? `data-sel="${o.c.id}:${o.k}"` : ''} title="${esc(`${o.name} · ${o.k === S.today ? '' : WD_SHORT[wdOf(o.k)] + ' '}${hm((o.t - kms(o.k)) / 60000)}`)}" aria-label="${esc(o.name)}"><span class="tr-orb sm mk-${o.cat}" style="--c:${skyInk(o.t)}">${glyphHTML(o.icon, o.name, 16)}</span><em class="ql">${hm((o.t - kms(o.k)) / 60000)}</em></button>`).join('');
 }
 const GLYPH_PICK = ['water', 'gym', 'laundry', 'broom', 'tooth', 'skin', 'cook', 'bowl', 'eat', 'inbox', 'gear', 'robot', 'music', 'cart', 'pill', 'plant', 'paw', 'book', 'calm', 'shower', 'trash', 'phone', 'laptop', 'receipt', 'bed', 'walk', 'sun', 'moon', 'mail', 'flask', 'note', 'sponge', 'car', 'spark'];
 const durTxt = (n) => (!n ? 'No duration' : n < 60 ? `${n} min` : `${Math.floor(n / 60)} h${n % 60 ? ` ${n % 60} min` : ''}`);
 function quickSheet() {
   const d = qa; if (!d) return '';
-  const Q = !!store.quiet, cur = glyphKey(d.icon, d.name), col = catCol(d.cat);
+  const Q = !!store.quiet, cur = glyphKey(d.icon, d.name), col = skyInk(kms(qa.k || dkey(Date.now())) + (qa.m != null ? qa.m : +d.time || 0) * 60000);
   const seg = (items, curV, act, cls = '') => `<div class="mseg ${cls}" role="group">${items.map(([v, l, t]) => `<button class="${curV === v ? 'on' : ''}" data-act="${act}:${v}" aria-pressed="${curV === v}" ${t ? `title="${t}" aria-label="${t}"` : ''}>${l}</button>`).join('')}</div>`;
-  const dot = (c) => `<i class="cdot" style="background:${c}"></i>`;
+  const dot = (c, k = 'life') => `<i class="cdot ck-${k}" style="--c:${c}"></i>`; // v18: one sky hue; life solid, work hollow, both a pair
   const needDay = d.repeat === 'once' || d.repeat === 'every' || d.repeat === 'weekly';
   const lab = (t) => (Q ? '' : `<span class="qa-lab">${t}</span>`);
   return `<div class="qa q13" style="--c:${col}">
     <div class="qa-head"><button class="qa-orb tr-orb ${qaPicker ? 'open' : ''}" style="--c:${col}" data-act="qaPick" aria-label="Choose icon" title="Icon">${glyphHTML(d.icon, d.name, 22)}</button>
       <input class="qa-name" data-f="qa:name" value="${esc(d.name)}" placeholder="${esc(QA_NAMES[d.icon] || 'Name')}" aria-label="Name" autocomplete="off" spellcheck="false"></div>
-    ${qaPicker ? `<div class="qa-pick"><div class="gly-grid" role="listbox" aria-label="Icon">${GLYPH_PICK.map((k) => `<button class="${k === cur ? 'on' : ''}" data-act="qaGly:${k}" aria-label="${k}" title="${k}"><svg class="gly" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="${GLYPHS[k]}"/></svg></button>`).join('')}</div>
+    ${qaPicker ? `<div class="qa-pick"><div class="gly-grid" role="listbox" aria-label="Icon">${GLYPH_PICK.map((k) => `<button class="${k === cur ? 'on' : ''}" data-act="qaGly:${k}" aria-label="${k}" title="${k}">${gk(k, 18)}</button>`).join('')}</div>
       <button class="qa-more" data-act="qaMore" aria-expanded="${qaEmoji}">${qaEmoji ? '−' : '···'}<span class="ql"> ${qaEmoji ? 'Hide emoji' : 'Emoji'}</span></button>
       ${qaEmoji ? `<div class="qa-icons" role="listbox" aria-label="Emoji">${CHORE_ICONS.map((ic, i) => `<button class="${ic === d.icon ? 'on' : ''}" data-act="qaIcon:${i}" aria-label="${esc(QA_NAMES[ic] || ic)}">${ic}</button>`).join('')}</div>` : ''}</div>` : ''}
     <div class="qa-row">${lab('Time')}<input type="time" class="qa-in" data-f="qa:m" value="${hm(d.m)}" step="300" aria-label="Time">${needDay ? `<input type="date" class="qa-in" data-f="qa:k" value="${d.k}" aria-label="Day">` : ''}</div>
-    ${seg([['life', dot(COL.life) + '<span>Life</span>', 'Life'], ['work', dot(COL.work) + '<span>Work</span>', 'Work'], ['both', dot(catCol('both')) + '<span>Both</span>', 'Both']], d.cat, 'qaCat', 'cat')}
+    ${seg([['life', dot(col) + '<span>Life</span>', 'Life'], ['work', dot(col, 'work') + '<span>Work</span>', 'Work'], ['both', dot(col, 'both') + '<span>Both</span>', 'Both']], d.cat, 'qaCat', 'cat')}
     ${seg([['once', '1×', 'Once'], ['daily', 'Daily', 'Every day'], ['weekdays', 'Days', 'Some weekdays'], ['every', 'Every', 'Every N days'], ['weekly', 'Weekly', 'Weekly']], d.repeat, 'qaRep', 'rep')}
     ${d.repeat === 'weekdays' ? `<div class="wds q">${WD_SHORT.map((w, i) => `<button class="wd ${d.days.includes(i) ? 'on' : ''}" data-act="qaDay:${i}" aria-label="${w}">${w[0]}</button>`).join('')}</div>` : ''}
     ${d.repeat === 'every' ? `<div class="qa-row">${lab('Every')}<div class="stepper"><button data-act="qaN:-1" aria-label="Fewer days">−</button><output>${d.n} d</output><button data-act="qaN:1" aria-label="More days">+</button></div></div>` : ''}
@@ -1854,7 +2063,7 @@ function showChoreMenu(id, k, x, y, atCursor = false) {
   const c = store.chores.find((z) => z.id === id); if (!c) return;
   let m = $('#cmenu'); if (!m) { m = document.createElement('div'); m.id = 'cmenu'; m.setAttribute('role', 'menu'); document.body.appendChild(m); }
   cmConfirm = false;
-  m.innerHTML = `<div class="cm-t">${esc(tipText({ dataset: { act: `chore:${id}:${k}` }, classList: { contains: () => false } }))}</div><div class="cm-b"><button data-act="cmMove:${id}" aria-label="Move">✥<span>Move</span></button><button data-act="cmEdit:${id}:${k}" aria-label="Edit">✎<span>Edit</span></button><button data-act="cmDel:${id}" aria-label="Delete">🗑<span>Delete</span></button></div>`;
+  m.innerHTML = `<div class="cm-t">${esc(tipText({ dataset: { act: `chore:${id}:${k}` }, classList: { contains: () => false } }))}</div><div class="cm-b"><button data-act="cmMove:${id}" aria-label="Move">${gk('move', 16)}<span>Move</span></button><button data-act="cmEdit:${id}:${k}" aria-label="Edit">${gk('edit', 16)}<span>Edit</span></button><button data-act="cmDel:${id}" aria-label="Delete">${gk('trash', 16)}<span>Delete</span></button></div>`;
   m.classList.toggle('mac', atCursor);
   m.classList.add('show');
   const r = m.getBoundingClientRect();
@@ -1878,25 +2087,26 @@ function nudgeChore(id, d) {
   c.time = t; if (qa) { qa.m = t; if (c.repeat === 'once') qa.k = c.date; }
   choreVer++; save(); tick();
 }
+const PAL_GLY = { now: 'now', today: 'sun', cycles: 'moon', life: 'heart', journal: 'page', dreams: 'spark', cosmos: 'spark', settings: 'gear' };
 const PAL_CMDS = () => {
   const C = [
-    ['✨', 'Add chore at now', 'N', () => newAtNow()],
-    ['💧', 'Log water +250 ml', '', () => act('water:250')],
-    ['💧', 'Log water +500 ml', '', () => act('water:500')],
-    ['🏋️', 'Log gym +15 min', '', () => act('gym:15')],
-    ['🏋️', 'Log gym +45 min', '', () => act('gym:45')],
-    ['☀️', "I'm awake", '', () => act('awake')],
-    ['✦', 'Log a dream', '', () => act('dreamNew')],
-    ['🤫', store.quiet ? 'Quiet mode: turn off' : 'Quiet mode: turn on', '', () => act('quiet')],
-    ['🧬', store.orbit ? 'Show flat dial' : 'Show helix', 'Space', () => { if (tab !== 'now') act('tab:now'); act('orbit'); }],
-    ['▣', store.insp ? 'Hide inspector' : 'Show inspector', 'I', () => { if (tab !== 'now') act('tab:now'); act('insp'); }],
-    ['◐', 'Appearance: dark', '', () => act('appear:dark')], ['◑', 'Appearance: match macOS', '', () => act('appear:system')], ['○', 'Appearance: light', '', () => act('appear:light')],
-    ['▫', store.mini ? 'Mini window: off' : 'Mini window: on (narrow window)', '', () => act('mini')],
-    ['⌨️', 'Keyboard shortcuts', '?', () => openKeys()],
+    ['plus', 'Add chore at now', 'N', () => newAtNow()],
+    ['water', 'Log water +250 ml', '', () => act('water:250')],
+    ['water', 'Log water +500 ml', '', () => act('water:500')],
+    ['gym', 'Log gym +15 min', '', () => act('gym:15')],
+    ['gym', 'Log gym +45 min', '', () => act('gym:45')],
+    ['sun', "I'm awake", '', () => act('awake')],
+    ['moon', 'Log a dream', '', () => act('dreamNew')],
+    ['quiet', store.quiet ? 'Quiet mode: turn off' : 'Quiet mode: turn on', '', () => act('quiet')],
+    [store.orbit ? 'dial' : 'helix', store.orbit ? 'Show flat dial' : 'Show helix', 'Space', () => { if (tab !== 'now') act('tab:now'); act('orbit'); }],
+    ['panel', store.insp ? 'Hide inspector' : 'Show inspector', 'I', () => { if (tab !== 'now') act('tab:now'); act('insp'); }],
+    ['moon', 'Appearance: dark', '', () => act('appear:dark')], ['half', 'Appearance: match macOS', '', () => act('appear:system')], ['sun', 'Appearance: light', '', () => act('appear:light')],
+    ['mini', store.mini ? 'Mini window: off' : 'Mini window: on (narrow window)', '', () => act('mini')],
+    ['keys', 'Keyboard shortcuts', '?', () => openKeys()],
   ];
-  TABS.forEach(([id, label], i) => C.push(['→', `Go to ${label}`, `⌘${i + 1}`, () => act('tab:' + id)]));
-  C.push(['→', 'Go to Cosmos', '', () => act('tab:cosmos')], ['⚙︎', 'Settings', '⌘,', () => act('tab:settings')]);
-  store.chores.forEach((c) => C.push([c.icon, `Edit ${c.name}`, '', () => { if (tab !== 'now') act('tab:now'); selK = null; openQuick(null, c.id); }]));
+  TABS.forEach(([id, label], i) => C.push([TABS[i][2] ? id : 'arrow', `Go to ${label}`, `⌘${i + 1}`, () => act('tab:' + id)]));
+  C.push(['cosmos', 'Go to Cosmos', '', () => act('tab:cosmos')], ['settings', 'Settings', '⌘,', () => act('tab:settings')]);
+  store.chores.forEach((c) => C.push([glyphKey(c.icon, c.name), `Edit ${c.name}`, '', () => { if (tab !== 'now') act('tab:now'); selK = null; openQuick(null, c.id); }]));
   return C;
 };
 let palSel = 0, palList = [];
@@ -1905,7 +2115,7 @@ function palRender() {
   const q = ($('#palQ').value || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
   palList = PAL_CMDS().filter((c) => q.every((w) => c[1].toLowerCase().includes(w)));
   palSel = Math.max(0, Math.min(palSel, palList.length - 1));
-  $('#palList').innerHTML = palList.length ? palList.map((c, i) => `<button class="pc ${i === palSel ? 'on' : ''}" data-pc="${i}" role="option" aria-selected="${i === palSel}"><span class="pi">${c[0]}</span><span class="pl">${esc(c[1])}</span>${c[2] ? `<kbd>${c[2]}</kbd>` : ''}</button>`).join('') : `<div class="pc-none">Nothing matches</div>`;
+  $('#palList').innerHTML = palList.length ? palList.map((c, i) => `<button class="pc ${i === palSel ? 'on' : ''}" data-pc="${i}" role="option" aria-selected="${i === palSel}"><span class="pi">${gk(PAL_GLY[c[0]] || c[0], 16)}</span><span class="pl">${esc(c[1])}</span>${c[2] ? `<kbd>${c[2]}</kbd>` : ''}</button>`).join('') : `<div class="pc-none">Nothing matches</div>`;
   const on = $('#palList .pc.on'); if (on) on.scrollIntoView({ block: 'nearest' });
 }
 function openPalette() {
@@ -1948,18 +2158,18 @@ function tipText(el) {
   if (el.dataset.tip) return el.dataset.tip;
   const r = el.dataset.ring;
   if (r) {
-    if (r === 'wheel') return `Galaxy · ${(S.wf * 100).toFixed(4)}% · ${(S.wf * 360).toFixed(3)}°`;
-    if (r === 'year') return `Sun · day ${S.yearDay}/${S.yearDays}`;
-    if (r === 'moon') return `Moon · ${phaseName(S.moonDays)} · ${(S.illum * 100).toFixed(0)}% lit`;
+    if (r === 'wheel') return `Sun · orbiting Sagittarius A* · ${(S.wf * 100).toFixed(1)}% through its current galactic year (≈230 My, fixed approx.)`;
+    if (r === 'year') return `Earth · day ${S.yearDay} of ${S.yearDays}`;
+    if (r === 'moon') return `Moon · ${phaseName(S.moonDays)} · ${(S.illum * 100).toFixed(0)}% lit · day ${S.moonDays.toFixed(1)} of 29.5`;
     if (r === 'sun') return `${S.hhmm} · ${S.sunLine}`;
-    if (r === 'focus' && el.classList.contains('wblk') || r === 'focus' && el.tagName === 'line') return `💻 Satisfying work · work · ${HABITS.focus.v(S)} / ${dur(store.goalMin)}`;
+    if (r === 'focus' && el.classList.contains('wblk') || r === 'focus' && el.tagName === 'line') return `Satisfying work · work · ${HABITS.focus.v(S)} / ${dur(store.goalMin)}`;
     if (HABITS[r]) { const goal = { focus: dur(store.goalMin), gym: store.gymGoal + 'm', mandarin: store.mandarinGoal + 'm', water: litres(store.waterGoal), protein: store.proteinGoal + 'g' }[r]; return `${HABITS[r].name} · ${HABITS[r].v(S)} / ${goal}`; }
     return RINGS[r] ? RINGS[r].name : '';
   }
   const a = el.dataset.act || '';
   const [cmd, id, k] = a.split(':');
-  if (cmd === 'chore') { const c = store.chores.find((x) => x.id === id); if (!c) return ''; const d = dayOf(k), when = k === S.today ? 'today' : k === addDays(S.today, 1) ? 'tomorrow' : WD_SHORT[wdOf(k)]; return `${c.icon} ${c.name} · ${CATS.find((x) => x[0] === catOf(c))[1].toLowerCase()} · ${when} ${hm(c.time)}${c.len ? ` · ${c.len}m` : ''}${d.chores && d.chores[c.id] ? ' · done' : ''}`; }
-  if (cmd === 'brushOn' || cmd === 'brush') return '🦷 Brush teeth · life · before sleep';
+  if (cmd === 'chore') { const c = store.chores.find((x) => x.id === id); if (!c) return ''; const d = dayOf(k), when = k === S.today ? 'today' : k === addDays(S.today, 1) ? 'tomorrow' : WD_SHORT[wdOf(k)]; return `${c.name} · ${CATS.find((x) => x[0] === catOf(c))[1].toLowerCase()} · ${when} ${hm(c.time)}${c.len ? ` · ${c.len}m` : ''}${d.chores && d.chores[c.id] ? ' · done' : ''}`; }
+  if (cmd === 'brushOn' || cmd === 'brush') return 'Brush teeth · life · before sleep';
   if (cmd === 'peek') return '';
   return '';
 }
@@ -1982,7 +2192,7 @@ function boot() {
   if (VIEWS[h]) tab = h;
   // drag the helix sideways to turn it; it eases back to NOW-at-front
   let drag = null, dragMoved = false, raf = 0;
-  const redrawHelix = () => { raf = 0; const og = $('#now-orbit'), S = compute(Date.now()); if (og) { og.innerHTML = helixSVG(S, ringLayout(RING_ORDER).dial, helixPhi); og.dataset.k = ''; } };
+  const redrawHelix = () => { raf = 0; if (morph) return; /* the morph loop picks up phi/zoom on its next frame */ const og = $('#now-orbit'), S = compute(Date.now()); if (og) { og.innerHTML = helixSVG(S, ringLayout(RING_ORDER).dial, helixPhi); og.dataset.k = ''; } };
   const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   document.addEventListener('pointerdown', (e) => {
     const f = e.target.closest('#nowFace.orbit-on > svg'); if (!f || G || moveMode || e.target.closest('.chore')) return;
@@ -2009,7 +2219,7 @@ function boot() {
   const ghostCat = (h) => (G.id === '+' ? (h ? h.cat : 'life') : catOf(store.chores.find((c) => c.id === G.id)));
   const startDrag = () => {
     G.active = true; hideChoreMenu(); if (lp) { clearTimeout(lp.t); lp = null; }
-    if (G.kind === 'tray') { ghostEl = document.createElement('div'); ghostEl.className = 'drag-ghost'; ghostEl.textContent = ghostIcon(); document.body.appendChild(ghostEl); }
+    if (G.kind === 'tray') { ghostEl = document.createElement('div'); ghostEl.className = 'drag-ghost'; ghostEl.innerHTML = gk(G.id === '+' ? 'plus' : glyphKey(ghostIcon(), (store.chores.find((c) => c.id === G.id) || {}).name), 22); document.body.appendChild(ghostEl); }
     if (G.el) G.el.classList.add('lifting');
     document.body.classList.add('plotting');
     if (navigator.vibrate) navigator.vibrate(6);
@@ -2169,23 +2379,16 @@ function boot() {
     rd.readAsText(e.target.files[0]); e.target.value = '';
   });
   window.addEventListener('storage', (e) => { if (e.key === KEY) { load(); applyPalette(); render(); } });
-  render();
-  setInterval(tick, 1000);
+  render(); tick();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); schedTick(); });
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
 }
-// ===================== SKY: starfield (two parallax layers) =====================
+// ===================== SKY: static starfield (painted once; no parallax, no drift) =====================
 function buildSky() {
   const rnd = (i, k) => { const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); };
   const layer = (n, seed, size, alpha) => Array.from({ length: n }, (_, i) => `${(rnd(i, seed) * 100).toFixed(2)}vw ${(rnd(i, seed + 1) * 100).toFixed(2)}vh 0 ${size} rgba(255,255,255,${(alpha * (0.4 + 0.6 * rnd(i, seed + 2))).toFixed(2)})`).join(',');
   const s1 = document.querySelector('#sky .s1'), s2 = document.querySelector('#sky .s2');
   if (s1) s1.style.boxShadow = layer(140, 3, '0px', 0.55);
   if (s2) s2.style.boxShadow = layer(28, 9, '0.6px', 0.9);
-  const reduce = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let raf = 0, px = 0, py = 0;
-  window.addEventListener('pointermove', (e) => {
-    if (e.pointerType !== 'mouse' || reduce()) return;
-    px = e.clientX / innerWidth - 0.5; py = e.clientY / innerHeight - 0.5;
-    if (!raf) raf = requestAnimationFrame(() => { raf = 0; const R = document.documentElement.style; R.setProperty('--px', px.toFixed(3)); R.setProperty('--py', py.toFixed(3)); });
-  }, { passive: true });
 }
 document.addEventListener('DOMContentLoaded', () => { buildSky(); boot(); });
